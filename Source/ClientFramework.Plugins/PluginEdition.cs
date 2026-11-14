@@ -262,8 +262,9 @@ public sealed record PluginEditionLock(string Edition, string HostApi, PluginLoc
 {
     public static PluginEditionLock Resolve(PluginEdition edition, IEnumerable<PluginPackage> packages, string hostApi)
     {
-        var resolution = edition.Resolve(packages.Select(p => p.Manifest), hostApi);
-        return new(edition.Name, hostApi, resolution.LoadOrder.Select(p => new PluginLockEntry(p.Id, p.Version)).ToArray());
+        var version = PluginHostApiVersion.Parse(hostApi).ToString();
+        var resolution = edition.Resolve(packages.Select(p => p.Manifest), version);
+        return new(edition.Name, version, resolution.LoadOrder.Select(p => new PluginLockEntry(p.Id, p.Version)).ToArray());
     }
 }
 

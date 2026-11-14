@@ -8,6 +8,7 @@
 
   </PropertyGroup>
   <ItemGroup>
+    <None Include="**/*.cs" Exclude="obj/**;bin/**" Pack="true" PackagePath="api/%(RecursiveDir)" />
     <ProjectReference Include="../Pregel/Heron.Pregel.csproj" />
     <ProjectReference Include="../Pregel.Scripting/Heron.Pregel.Scripting.csproj" />
     <PackageReference Include="Serilog" />

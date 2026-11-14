@@ -4,6 +4,7 @@ param(
     [string]$Output = (Join-Path (Split-Path -Parent $PSScriptRoot) 'Binaries/Heron'),
     [string]$Feed,
     [switch]$List,
+    [switch]$ValidateOnly,
     [switch]$ServerOnly,
     [ValidateSet('linux-amd64', 'windows-amd64')]
     [string]$ServerRuntime = 'linux-amd64',
@@ -16,6 +17,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 $OutputEncoding = [Console]::OutputEncoding
 
 if ($ServerOnly) {
+    if ($ValidateOnly) { throw '-ValidateOnly validates .NET packages; it cannot be combined with -ServerOnly.' }
     & (Join-Path $PSScriptRoot 'Pack.Server.ps1') -Output $Output -Runtime $ServerRuntime -GoExecutable $GoExecutable -List:$List
     return
 }
@@ -30,12 +32,19 @@ function Invoke-Dotnet([string[]]$Arguments) {
 }
 
 function Read-ProjectProperties([string]$Project) {
-    $json = Invoke-Dotnet -Arguments @('msbuild', $Project, '-nologo', '-p:Configuration=Release', '-getProperty:IsPackable,PackageId,PackageVersion')
+    $json = Invoke-Dotnet -Arguments @('msbuild', $Project, '-nologo', '-p:Configuration=Release', '-getProperty:IsPackable,PackageId,PackageVersion,EnablePackageValidation,PackageValidationBaselineVersion', '-getItem:ApiCompatSuppressionFile')
     ($json -join "`n" | ConvertFrom-Json).Properties
 }
 
 [xml]$versionFile = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Version.props') -Raw
 $version = [string]$versionFile.Project.PropertyGroup.Version
+[xml]$baseline = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Source/ClientFramework.Compatibility/Baseline.props') -Raw
+$baselineVersion = [string]$baseline.Project.PropertyGroup.HeronContractBaselinePackageVersion
+$baselineMajor = [int]$baseline.Project.PropertyGroup.HeronContractBaselineHostApiMajor
+$hostApi = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Source/Client.Host/host-api.json') -Raw | ConvertFrom-Json).host_api
+if ($hostApi -notmatch '\A(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*))?\z') { throw "Invalid publishing host_api: $hostApi" }
+$hostMajor = [int]$Matches[1]
+if ($hostMajor -lt $baselineMajor) { throw "host_api $hostApi predates the contract baseline major $baselineMajor." }
 $packages = @(foreach ($project in (Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'Source') -Filter '*.csproj' -Recurse -File | Sort-Object FullName)) {
     $properties = Read-ProjectProperties $project.FullName
     if ($properties.IsPackable -ne 'true') { continue }
@@ -45,6 +54,17 @@ $packages = @(foreach ($project in (Get-ChildItem -LiteralPath (Join-Path $PSScr
     if ($properties.PackageVersion -ne $version) {
         throw "Package $($properties.PackageId) must use version $version from Version.props."
     }
+    if ($properties.PackageId -in @('Heron.ClientFramework.Abstractions', 'Heron.ClientControls')) {
+        if ($properties.EnablePackageValidation -ne 'true' -or $properties.PackageValidationBaselineVersion -ne $baselineVersion) {
+            throw "Contract package validation must use the checked-in $baselineVersion baseline: $($properties.PackageId)"
+        }
+        $items = (Invoke-Dotnet -Arguments @('msbuild', $project.FullName, '-nologo', '-p:Configuration=Release', '-getItem:ApiCompatSuppressionFile') -join "`n" | ConvertFrom-Json).Items.ApiCompatSuppressionFile
+        $existingSuppressions = @($items | Where-Object { $_ -and (Test-Path -LiteralPath $_.FullPath) })
+        $defaultSuppressions = Join-Path $project.DirectoryName 'CompatibilitySuppressions.xml'
+        if ($hostMajor -eq $baselineMajor -and ($existingSuppressions.Count -gt 0 -or (Test-Path -LiteralPath $defaultSuppressions))) {
+            throw "API compatibility suppressions require a new host_api major: $($properties.PackageId) (host_api $hostApi)."
+        }
+    }
     [pscustomobject]@{ Project = $project.FullName; Id = $properties.PackageId; Version = $properties.PackageVersion }
 })
 if (@($packages.Id | Sort-Object -Unique).Count -ne $packages.Count) {
@@ -52,7 +72,7 @@ if (@($packages.Id | Sort-Object -Unique).Count -ne $packages.Count) {
 }
 $outputDirectory = [System.IO.Path]::GetFullPath($Output, $PSScriptRoot)
 if ($List) {
-    [pscustomobject]@{ Version = $version; Output = $outputDirectory; Feed = $Feed; Packages = $packages;
+    [pscustomobject]@{ Version = $version; HostApi = $hostApi; Baseline = $baselineVersion; Output = $outputDirectory; Feed = $Feed; Packages = $packages;
         Server = "Heron.AutomationTenants.Server.$version.$ServerRuntime.tar.gz" } | ConvertTo-Json -Depth 4
     return
 }
@@ -64,7 +84,7 @@ $dirty = & git -C $PSScriptRoot status --porcelain
 if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect Heron git working tree.'
 }
-if (@($dirty).Count -gt 0) {
+if (@($dirty).Count -gt 0 -and !$ValidateOnly) {
     throw "Refusing to pack with uncommitted changes in Heron. Commit first so package metadata records the exact commit."
 }
 
@@ -73,7 +93,7 @@ $stagingRoot = Join-Path (Split-Path -Parent $PSScriptRoot) 'Binaries/Heron/.pac
 $staging = Join-Path $stagingRoot ([guid]::NewGuid().ToString('N'))
 [System.IO.Directory]::CreateDirectory($staging) | Out-Null
 foreach ($package in $packages) {
-    try { Invoke-Dotnet -Arguments @('pack', $package.Project, '-c', 'Release', '--nologo', '-o', $staging) }
+    try { Invoke-Dotnet -Arguments @('pack', $package.Project, '-c', 'Release', '--nologo', '-p:ApiCompatGenerateSuppressionFile=false', '-o', $staging) }
     catch { throw "Packing failed: $($package.Id). Archives retained at $staging. $_" }
 }
 $archives = @(foreach ($package in $packages) {
@@ -132,8 +152,8 @@ function Copy-Archives([string]$Directory) {
     finally { $lock.Dispose() }
 }
 
-Copy-Archives $outputDirectory
-if (![string]::IsNullOrWhiteSpace($Feed)) {
+if (!$ValidateOnly) { Copy-Archives $outputDirectory }
+if (!$ValidateOnly -and ![string]::IsNullOrWhiteSpace($Feed)) {
     Copy-Archives ([System.IO.Path]::GetFullPath($Feed, $PSScriptRoot))
 }
 
@@ -143,5 +163,6 @@ if (!$resolvedStaging.StartsWith($safeRoot, [System.StringComparison]::OrdinalIg
     throw "Refusing to clean staging outside $safeRoot"
 }
 Remove-Item -LiteralPath $resolvedStaging -Recurse -Force
+if ($ValidateOnly) { Write-Host "Package validation passed; no archives delivered."; return }
 Write-Host "Packages ready: $outputDirectory"
 & (Join-Path $PSScriptRoot 'Pack.Server.ps1') -Output $outputDirectory -Runtime $ServerRuntime -GoExecutable $GoExecutable

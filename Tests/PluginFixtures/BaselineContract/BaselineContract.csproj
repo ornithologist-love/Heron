@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Heron.ClientFramework.PluginProbe.BaselineContract</AssemblyName>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Heron.ClientFramework.Abstractions" Version="0.2.14" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Heron.ClientFramework.Plugins" Version="0.2.14" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Heron.ClientControls" Version="0.2.14" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

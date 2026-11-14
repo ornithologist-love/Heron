@@ -7,6 +7,7 @@ Reusable .NET 8 building blocks for Avalonia desktop applications and durable au
 - [ClientControls](Docs/client-controls.md): controls, light and dark themes, and an independent Gallery with an in-memory automation mock.
 - [ClientFramework](Docs/client-framework.md): plugin loading, host contracts, desktop infrastructure, page lifecycle and navigation.
 - [Pregel](Docs/pregel.md): durable graph execution, C# scripts, automation and a standalone CLI.
+- [Pregel Avalonia](Docs/pregel-avalonia.md): reusable automation workspace and the real page in the standalone host.
 - [AutomationTenants](Docs/automation-tenants.md): remote workers, native subgraph dispatch and durable resource coordination.
 
 Build requirements and package delivery: [package workflow](Docs/package-workflow.md). PowerShell 7 and a .NET SDK capable of targeting .NET 8 are required; dependencies restore from nuget.org.
@@ -22,6 +23,12 @@ Open the Gallery:
 
 ```powershell
 dotnet run --project Source/Client.Controls.Gallery --configuration Debug
+```
+
+Open the real automation workspace with a local script:
+
+```powershell
+dotnet run --project Source/Client.Host -- --script Examples/Pregel/hello/Hello.csx
 ```
 
 Run the framework tests:

@@ -8,6 +8,7 @@ public static class PluginDependencyGraph
 {
     public static PluginResolution Resolve(IEnumerable<PluginManifest> manifests, IEnumerable<string> roots, string hostApi)
     {
+        var hostVersion = PluginHostApiVersion.Parse(hostApi);
         var catalog = new Dictionary<string, PluginManifest>(StringComparer.OrdinalIgnoreCase);
         foreach (var manifest in manifests)
         {
@@ -20,7 +21,9 @@ public static class PluginDependencyGraph
         {
             if (!catalog.TryGetValue(id, out var manifest)) throw new InvalidDataException($"Required plugin '{id}' is missing.");
             if (!selected.Add(id)) return;
-            if (manifest.HostApi != hostApi) throw new InvalidDataException($"Plugin '{id}' requires host_api {manifest.HostApi}, host provides {hostApi}.");
+            var required = PluginHostApiVersion.Parse(manifest.HostApi);
+            if (!hostVersion.Supports(required))
+                throw new InvalidDataException($"Plugin '{id}' requires host_api {required}, host provides {hostVersion}; the major must match and the host minor must be at least {required.Minor}.");
             foreach (var dependency in manifest.Dependencies.Where(d => !d.Optional))
             {
                 Select(dependency.Id);
@@ -56,6 +59,7 @@ public static class PluginDependencyGraph
         static bool ValidId(string? id) => id is not null && System.Text.RegularExpressions.Regex.IsMatch(id, @"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$");
         if (manifest.SchemaVersion != 1 || !ValidId(manifest.Id) || string.IsNullOrWhiteSpace(manifest.HostApi))
             throw new InvalidDataException("Invalid plugin schema, id or host_api.");
+        PluginHostApiVersion.Parse(manifest.HostApi);
         PluginVersion.Parse(manifest.Version);
         if (manifest.UpdateMode is not ("restart_required" or "hot_reload")) throw new InvalidDataException($"Invalid update_mode for '{manifest.Id}'.");
         if (manifest.Modules is not { Length: > 0 } || manifest.Modules.Any(m => m is null

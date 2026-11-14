@@ -11,9 +11,14 @@ public sealed record PluginHostPolicy(
     string[]? CompatiblePatchPrefixes = null,
     Dictionary<string, string>? CompatibleAssemblyVersions = null)
 {
-    public static PluginHostPolicy Read(string path) => JsonSerializer.Deserialize<PluginHostPolicy>(File.ReadAllText(path),
-        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower })
-        ?? throw new InvalidDataException("Host plugin policy is null.");
+    public static PluginHostPolicy Read(string path)
+    {
+        var policy = JsonSerializer.Deserialize<PluginHostPolicy>(File.ReadAllText(path),
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower })
+            ?? throw new InvalidDataException("Host plugin policy is null.");
+        PluginHostApiVersion.Parse(policy.HostApi);
+        return policy;
+    }
     public Assembly[] LoadSharedAssemblies(string directory) => LoadSharedAssemblies(directory, null);
 
     public Assembly[] LoadSharedAssemblies(string directory, string? hostAssemblyPath)

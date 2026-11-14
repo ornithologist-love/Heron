@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "fixture.baseline",
+  "version": "1.0.0",
+  "host_api": "7",
+  "modules": [
+    {
+      "name": "main",
+      "assembly": "Heron.ClientFramework.PluginProbe.BaselineContract.dll",
+      "entry_type": "Heron.ClientFramework.PluginProbe.BaselineModule"
+    }
+  ]
+}

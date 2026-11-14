@@ -1,6 +1,6 @@
 ---
 type: guide
-covers: [Version.props, Directory.Build.props, Directory.Packages.props, Pack.ps1, Pack.Server.ps1, nuget.config, LICENSE]
+covers: [Version.props, Directory.Build.props, Directory.Packages.props, Pack.ps1, Pack.Server.ps1, Source/ClientFramework.Compatibility/**, nuget.config, LICENSE]
 ---
 
 # Package workflow
@@ -11,13 +11,15 @@ The root MIT license applies to Heron source and is included with each package t
 
 The repository inherits the existing workspace conventions: source belongs in `Source`, durable documentation in `Docs`, process notes in ignored `.work`, and deliverables in the workspace's `Binaries/Heron`. Repository extraction changes ownership; it does not reset directory naming, layering, development or documentation rules.
 
-Libraries under `Source` opt into packing with `IsPackable=true` and use package IDs beginning with `Heron.`. The libraries are [ClientControls](client-controls.md), [ClientFramework](client-framework.md) (plugin model, abstractions, runtime, infrastructure and shell) [Pregel](pregel.md) and [AutomationTenants](automation-tenants.md). The independent Pregel CLI explicitly opts into .NET tool packaging; the Gallery and samples remain unpackable. An empty package inventory reports missing libraries instead of producing placeholder packages.
+Libraries under `Source` opt into packing with `IsPackable=true` and use package IDs beginning with `Heron.`. The libraries are [ClientControls](client-controls.md), [ClientFramework](client-framework.md) (plugin model, abstractions, runtime, infrastructure and shell), [Pregel](pregel.md), [Pregel Avalonia](pregel-avalonia.md) and [AutomationTenants](automation-tenants.md). The independent Pregel CLI explicitly opts into .NET tool packaging; the Gallery and samples remain unpackable. An empty package inventory reports missing libraries instead of producing placeholder packages.
 
 ## Versions and source paths
 
 `Version.props` owns the common package version. `Directory.Packages.props` owns external dependency versions. The pack entry checks each library's effective package version, so overriding a version in an individual project cannot silently split a release.
 
 Assembly versions default to a stable identity independently of the package version. This does not make renames compatible: assembly names, namespaces and persisted type identities still require their own compatibility decisions when code is migrated.
+
+Abstractions and ClientControls enable .NET package validation against the released baseline in `Source/ClientFramework.Compatibility`. Baseline archives are build inputs committed with this repository and restored from its local NuGet source; no consumer checkout or package server is required. The baseline pins the oldest supported contract surface for the current host major. Additive releases retain it. Reviewed breaking changes require a new host major before compatibility suppressions are accepted; after that major is released, its packages become the next baseline. The publishing policy comes from the independent launcher's host policy. Interface-version semantics belong to [ClientFramework](client-framework.md#host-interface-identity).
 
 Debug retains physical source paths for source debugging and XAML hot reload. Release uses a stable virtual source root through PathMap and embeds portable symbols so post-compilation writers cannot introduce physical PDB paths. Local builds do not require a commit or tag.
 
@@ -42,6 +44,8 @@ pwsh -File ./Pack.ps1 -Feed ../Consumer/Packages/Heron
 ```
 
 All projects finish packing before any archive is added to the selected output. An output lock serializes cooperating deliveries. Existing archives are reusable only when their bytes match; a different archive at the same package version is rejected. Failed build or conflict staging is retained for diagnosis. Package archives are staged, while compiler output paths remain unchanged.
+
+`pwsh -File ./Pack.ps1 -ValidateOnly` runs the same .NET packing, API compatibility and archive checks without delivering packages or building the server artifact. This mode accepts a dirty working tree so public API edits can be checked before committing; it uses the normal compiler output directories and never replaces a released archive. Normal delivery still requires a clean commit.
 
 For a versioned release, commit the source and common version, create the corresponding local version tag, and pack that revision. The consumer then commits the received package files together with its selected package versions. Tags, consumer commits and remote uploads are separate explicit operations; the pack entry performs none of them.
 

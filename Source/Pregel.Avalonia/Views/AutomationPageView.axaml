@@ -1,0 +1,1183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Heron.Pregel.Avalonia.ViewModels"
+             xmlns:auto="using:Heron.Pregel.Automation"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:buttons="using:Heron.ClientControls.Buttons"
+             xmlns:dialogs="using:Heron.ClientControls.Dialogs"
+             xmlns:views="using:Heron.Pregel.Avalonia.Views"
+             xmlns:graphs="using:Heron.ClientControls.Graphs"
+             x:Class="Heron.Pregel.Avalonia.Views.AutomationPageView"
+             x:Name="AutomationPage"
+             x:DataType="vm:AutomationPageViewModel"
+             Background="{DynamicResource BgContentBrush}">
+  <UserControl.Resources>
+    <!-- 步骤节点：固定 52px 高，样式见 Heron.ClientControls/Themes/AutomationGraph.axaml -->
+    <DataTemplate x:Key="GraphStepTemplate" x:DataType="vm:AutomationStepItemViewModel">
+      <Border Classes="graphStep"
+              Classes.plan="{Binding IsPlan}" Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}"
+              Classes.review="{Binding IsReview}" Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}"
+              Classes.skipped="{Binding IsSkipped}" Classes.cancelled="{Binding IsCancelled}"
+              Classes.reused="{Binding IsReused}" Classes.retrying="{Binding IsRetrying}"
+              ToolTip.Tip="{Binding ToolTipText}">
+        <Panel>
+          <Grid Margin="12,0,8,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <CheckBox Classes="runSelect" MinWidth="0" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="选择运行此步骤"
+                        ToolTip.Tip="勾选后只运行所选步骤，其余本次跳过" IsChecked="{Binding IsRunSelected, Mode=OneWay}"
+                        Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).ToggleRunStepCommand}" CommandParameter="{Binding}">
+                <CheckBox.IsVisible>
+                  <MultiBinding Converter="{x:Static BoolConverters.And}">
+                    <Binding Path="$parent[UserControl].((vm:AutomationPageViewModel)DataContext).IsSelectingSteps" />
+                    <Binding Path="CanSelectForRun" />
+                  </MultiBinding>
+                </CheckBox.IsVisible>
+              </CheckBox>
+              <fi:FluentIcon Classes="stateIcon" Icon="{Binding StateIcon}" IconSize="Size16"
+                             Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}" Classes.review="{Binding IsReview}"
+                             Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}" Classes.cancelled="{Binding IsCancelled}"
+                             Classes.reused="{Binding IsReused}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+              <TextBlock Classes="stepTitle" Text="{Binding Title}" />
+              <TextBlock Classes="stepMeta" Text="{Binding MetaLine}" IsVisible="{Binding HasMeta}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <Button Classes="graphAction retry" IsVisible="{Binding CanRetry}" AutomationProperties.Name="重试"
+                      IsEnabled="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution.CanContinue}" ToolTip.ShowOnDisabled="True"
+                      ToolTip.Tip="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution.ContinueToolTip}"
+                      Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution.RequestContinueCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <fi:FluentIcon Icon="ArrowClockwise" IconSize="Size16" />
+                  <TextBlock Text="重试" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="graphAction iconOnly rerun" ToolTip.Tip="从此节点重新运行（先检查，确认后用原参数新建记录）"
+                      AutomationProperties.Name="从此节点重新运行" CommandParameter="{Binding}" IsVisible="{Binding CanRerun}"
+                      Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution.RequestRerunCommand}">
+                <fi:FluentIcon Icon="ArrowClockwise" IconSize="Size16" />
+              </Button>
+              <Button Classes="graphAction review" IsVisible="{Binding IsReviewNode}"
+                      ToolTip.Tip="打开人工审核" AutomationProperties.Name="打开人工审核"
+                      Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).FocusReviewCommand}">
+                <TextBlock Text="审核" VerticalAlignment="Center" />
+              </Button>
+              <Button Classes="graphAction iconOnly" IsVisible="{Binding CanOpenSubgraph}"
+                      ToolTip.Tip="查看子图" AutomationProperties.Name="查看子图" CommandParameter="{Binding}"
+                      Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).OpenSubgraphCommand}">
+                <fi:FluentIcon Icon="Flowchart" IconSize="Size16" />
+              </Button>
+              <Button Classes="graphAction iconOnly"
+                      ToolTip.Tip="查看节点日志" AutomationProperties.Name="查看节点日志" CommandParameter="{Binding}"
+                      IsVisible="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).HasRun}"
+                      Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).OpenStepLogsCommand}">
+                <fi:FluentIcon Icon="DocumentText" IconSize="Size16" />
+              </Button>
+            </StackPanel>
+          </Grid>
+          <ProgressBar Classes="stepProgress" Minimum="0" Maximum="100" Value="{Binding Progress}"
+                       IsVisible="{Binding ShowProgress}" IsIndeterminate="{Binding IsProgressIndeterminate}" />
+        </Panel>
+      </Border>
+    </DataTemplate>
+    <!-- Stage：标题行固定 40px（横向主图连线锚点 = 20），说明行放并行路数与进入条件 -->
+    <DataTemplate x:Key="GraphStageTemplate" x:DataType="vm:AutomationStepItemViewModel">
+      <Panel>
+        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource GraphStepTemplate}" IsVisible="{Binding !HasStageHeader}" />
+        <Border Classes="graphStage" IsVisible="{Binding HasStageHeader}"
+                Classes.running="{Binding IsRunning}" Classes.failed="{Binding IsFailed}" Classes.review="{Binding IsReview}">
+          <StackPanel>
+            <graphs:WidthNeutralDecorator Height="40">
+              <Grid Margin="12,0,8,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <CheckBox Classes="runSelect" MinWidth="0" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="选择运行此步骤"
+                            ToolTip.Tip="勾选后只运行所选步骤，其余本次跳过" IsChecked="{Binding IsRunSelected, Mode=OneWay}"
+                            Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).ToggleRunStepCommand}" CommandParameter="{Binding}">
+                    <CheckBox.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="$parent[UserControl].((vm:AutomationPageViewModel)DataContext).IsSelectingSteps" />
+                        <Binding Path="CanSelectForRun" />
+                      </MultiBinding>
+                    </CheckBox.IsVisible>
+                  </CheckBox>
+                  <fi:FluentIcon Classes="stateIcon" Icon="{Binding StateIcon}" IconSize="Size16"
+                                 Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}" Classes.review="{Binding IsReview}"
+                                 Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}" Classes.cancelled="{Binding IsCancelled}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Classes="stageTitle" Text="{Binding StageTitle}" ToolTip.Tip="{Binding StageTitle}"
+                           Classes.skipped="{Binding IsSkipped}" Classes.cancelled="{Binding IsCancelled}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Classes="stageState" Text="{Binding StatusLabel}"
+                             Classes.running="{Binding IsRunning}" Classes.failed="{Binding IsFailed}" Classes.review="{Binding IsReview}" />
+                  <Button Classes="graphAction iconOnly" ToolTip.Tip="查看阶段日志" AutomationProperties.Name="查看阶段日志"
+                          IsVisible="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).HasRun}"
+                          Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).OpenStepLogsCommand}" CommandParameter="{Binding}">
+                    <fi:FluentIcon Icon="DocumentText" IconSize="Size16" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </graphs:WidthNeutralDecorator>
+            <graphs:WidthNeutralDecorator IsVisible="{Binding HasStageNote}">
+              <StackPanel Margin="12,0,12,8" Orientation="Horizontal" Spacing="6">
+                <Border Classes="graphChip" IsVisible="{Binding IsParallel}">
+                  <TextBlock Text="{Binding ParallelCaption}" />
+                </Border>
+                <TextBlock Classes="stepMeta" VerticalAlignment="Center" Text="{Binding StageCondition}" IsVisible="{Binding HasFinalizationCondition}" />
+              </StackPanel>
+            </graphs:WidthNeutralDecorator>
+            <ItemsControl Margin="8,0,8,8" IsVisible="{Binding IsStage}" ItemsSource="{Binding Children}" ItemTemplate="{StaticResource GraphStepTemplate}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><graphs:DependencyGraphPanel Classes="automationStage" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <ContentControl Margin="8,0,8,8" Width="236" Content="{Binding}" ContentTemplate="{StaticResource GraphStepTemplate}" IsVisible="{Binding IsRecovery}" />
+          </StackPanel>
+        </Border>
+      </Panel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <StyleInclude Source="avares://Heron.ClientControls/Themes/AutomationWorkspace.axaml" />
+    <Style Selector="TextBlock.groupTitle">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="Rectangle.divider">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Fill" Value="{DynamicResource DividerBrush}" />
+    </Style>
+
+    <!-- 设置分组标题：图标与左侧图标栏一一对应（任务 / 触发器 / 参数），收起和展开的语义对得上 -->
+    <Style Selector="StackPanel.groupHeader">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="6" />
+    </Style>
+    <Style Selector="StackPanel.groupHeader fi|FluentIcon">
+      <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.groupHeader TextBlock.groupTitle">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.parameterSection">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Border.parameterSection.named">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="0,0,0,24" />
+    </Style>
+    <Style Selector="TextBlock.parameterSectionTitle">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+    </Style>
+
+    <!-- 设置卡：展开 374 宽（含右侧间距），收起时宽度和透明度过渡到 0；内容固定 360 宽 + 裁剪，收起过程中表单不会折行闪动 -->
+    <Style Selector="Border.settingsCard">
+      <Setter Property="Grid.Column" Value="1" />
+      <Setter Property="Width" Value="360" />
+      <Setter Property="Margin" Value="0,0,14,0" />
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Width" Duration="0:0:0.18"><DoubleTransition.Easing><CubicEaseOut /></DoubleTransition.Easing></DoubleTransition>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+          <ThicknessTransition Property="Margin" Duration="0:0:0.18"><ThicknessTransition.Easing><CubicEaseOut /></ThicknessTransition.Easing></ThicknessTransition>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.settingsCard.collapsed">
+      <Setter Property="Width" Value="0" />
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <!-- 窄窗口：展开的设置浮在图上方，不挤压图 -->
+    <Style Selector="Border.settingsCard.overlay">
+      <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+      <Setter Property="Grid.Column" Value="2" />
+      <Setter Property="ZIndex" Value="20" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="BoxShadow" Value="0 8 24 0 #290F172A" />
+    </Style>
+
+    <!-- 图标栏 -->
+    <Style Selector="Border.settingsRail">
+      <Setter Property="Width" Value="48" />
+    </Style>
+    <Style Selector="Button.railButton">
+      <Setter Property="Width" Value="36" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.railButton /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.railButton:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="Button.railButton fi|FluentIcon">
+      <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="Ellipse.railDot">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,-2,-4,0" />
+      <Setter Property="Stroke" Value="{DynamicResource BgSurfaceBrush}" />
+      <Setter Property="StrokeThickness" Value="1.5" />
+    </Style>
+    <Style Selector="Ellipse.railDot.unsaved">
+      <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}" />
+    </Style>
+    <!-- 错误点盖在未保存点之上（后声明的元素在上层） -->
+    <Style Selector="Ellipse.railDot.error">
+      <Setter Property="Fill" Value="{DynamicResource DangerIconBrush}" />
+      <Setter Property="ZIndex" Value="1" />
+    </Style>
+
+    <!-- 首次收起提示 -->
+    <Style Selector="Border.settingsHint">
+      <Setter Property="Background" Value="{DynamicResource InfoBgBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource InfoBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="10,6,6,6" />
+      <Setter Property="BoxShadow" Value="0 4 12 0 #1A0F172A" />
+    </Style>
+
+    <!-- 从图标栏或错误定位进来时，目标分组短暂高亮 -->
+    <Style Selector="StackPanel.settingsGroup">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.4" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="StackPanel.settingsGroup.focused">
+      <Setter Property="Background" Value="{DynamicResource BgSelectedBrush}" />
+    </Style>
+    <Style Selector="Button.runDetailMode">
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="Button.runDetailMode /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.runDetailMode.selected /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Margin="20,12,20,0" TextWrapping="Wrap"
+               IsVisible="{Binding IsSchedulingPaused}"
+               Text="此实例的自动化定时调度已暂停。" />
+  <Grid>
+<Border Classes="mockShell" Margin="12">
+<Grid x:Name="PageLayout" ColumnDefinitions="272,1,*" RowDefinitions="Auto,*">
+<Grid x:Name="CompactNavigation" Grid.Column="2" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8"
+          Margin="0,0,0,10" IsVisible="False">
+      <buttons:IconButton x:Name="CompactTaskButton" Classes="contentButton buttonSecondary buttonSmall" Text="任务列表"
+                          Click="OpenCompactTasks">
+        <buttons:IconButton.Icon><fi:FluentIcon Icon="CalendarClock" IconSize="Size16" /></buttons:IconButton.Icon>
+      </buttons:IconButton>
+      <buttons:IconButton x:Name="CompactHistoryButton" Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Text="运行记录"
+                          Click="OpenCompactHistory" IsVisible="{Binding ShowTaskDetails}">
+        <buttons:IconButton.Icon><fi:FluentIcon Icon="History" IconSize="Size16" /></buttons:IconButton.Icon>
+      </buttons:IconButton>
+      <TextBlock Grid.Column="2" Classes="textMeta" Text="{Binding TaskCountText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      <Popup x:Name="CompactTaskPopup" PlacementTarget="{Binding #CompactTaskButton}" Placement="BottomEdgeAlignedLeft"
+             IsLightDismissEnabled="True" />
+      <Popup x:Name="CompactHistoryPopup" PlacementTarget="{Binding #CompactHistoryButton}" Placement="BottomEdgeAlignedLeft"
+             IsLightDismissEnabled="True" />
+    </Grid>
+<Border x:Name="TaskCard" Grid.Row="1" Grid.Column="0" Classes="sidePane" DataContext="{Binding #AutomationPage.((vm:AutomationPageViewModel)DataContext)}">
+                <DockPanel Margin="12,14,12,12">
+                  <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="4,0,0,12">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                      <fi:FluentIcon Icon="CalendarClock" IconSize="Size20" Foreground="#247C86" />
+                      <TextBlock Classes="textSectionTitle" Text="自动化任务" />
+                    </StackPanel>
+                    <buttons:IconButton x:Name="NewTaskButton" Grid.Column="1" Classes="contentButton buttonPrimary buttonMedium" Text="新建" IsEnabled="{Binding Templates.Count}"
+                                        Click="NewTaskButton_Click">
+                      <buttons:IconButton.Icon><fi:FluentIcon Icon="Add" IconSize="Size16" /></buttons:IconButton.Icon>
+                    </buttons:IconButton>
+                  </Grid>
+                  <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+                    <Button x:Name="GlobalSettingsButton" Classes="contentButton buttonSecondary buttonSmall" Content="全局设置" IsVisible="{Binding HasGlobalSettings}" Click="GlobalSettings_Click" />
+                    <Button x:Name="ScriptBrowserButton" Classes="contentButton buttonSecondary buttonSmall" Content="脚本管理" Command="{Binding ToggleScriptBrowserCommand}" />
+                  </StackPanel>
+                  <TextBox DockPanel.Dock="Top" Text="{Binding TaskSearch, Mode=TwoWay}" PlaceholderText="搜索任务或流程" Margin="0,0,0,10">
+                    <TextBox.InnerLeftContent>
+                      <fi:FluentIcon Classes="metaIcon" Icon="Search" Margin="10,0,2,0" />
+                    </TextBox.InnerLeftContent>
+                  </TextBox>
+                  <ListBox DockPanel.Dock="Top" Classes="chips" ItemsSource="{Binding TaskFilters}" SelectedIndex="{Binding TaskFilterIndex, Mode=TwoWay}"
+                           Margin="0,0,0,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:AutomationTaskFilterViewModel">
+                        <TextBlock Text="{Binding Text}" />
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+
+                  <Grid>
+                    <ListBox x:Name="TaskList" Classes="flat" ItemsSource="{Binding VisibleTasks}" SelectedItem="{Binding SelectedTask, Mode=OneWay}" SelectionChanged="TaskList_SelectionChanged"
+                             IsVisible="{Binding HasVisibleTasks}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                      <ListBox.Styles><Style Selector="ListBoxItem.reordering"><Setter Property="Opacity" Value="0.6" /></Style></ListBox.Styles>
+<ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AutomationTaskItemViewModel">
+                          <Panel ToolTip.Tip="{Binding ListDetail}">
+                            <Border Classes="selBar" IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                            <Grid Classes="taskRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="9">
+                              <fi:FluentIcon Classes="rowIcon" Icon="{Binding Icon}" />
+                              <TextBlock Grid.Column="1" Classes="rowName" Text="{Binding Name}" />
+                              <TextBlock Grid.Column="2" Classes="meta" Text="{Binding CardTime}" />
+                              <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10" ClipToBounds="True">
+                                <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasCardStatus}">
+                                  <Ellipse Classes="dot" Classes.succeeded="{Binding IsCardSucceeded}" Classes.failed="{Binding IsCardFailed}"
+                                           Classes.running="{Binding IsCardRunning}" Classes.cancelled="{Binding IsCardCancelled}" />
+                                  <TextBlock Classes="st" Classes.succeeded="{Binding IsCardSucceeded}" Classes.failed="{Binding IsCardFailed}"
+                                             Classes.running="{Binding IsCardRunning}" Text="{Binding CardStatus}" />
+                                </StackPanel>
+                                <Border Classes="taskBadge draft" IsVisible="{Binding IsDraft}"><TextBlock Text="草稿" /></Border>
+                                <ItemsControl ItemsSource="{Binding TriggerBadges}" IsVisible="{Binding HasTriggerBadges}">
+ <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+ <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:AutomationTriggerBadge"><Panel>
+  <Border Classes="taskBadge" Classes.warning="{Binding IsWarning}" Classes.danger="{Binding IsDanger}" IsVisible="{Binding !IsNeutral}"><StackPanel Orientation="Horizontal" Spacing="4"><fi:FluentIcon Icon="{Binding Icon}" /><TextBlock Text="{Binding Text}" /></StackPanel></Border>
+  <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsNeutral}"><fi:FluentIcon Classes="metaIcon" Icon="{Binding Icon}" /><TextBlock Classes="meta" Text="{Binding Text}" /></StackPanel>
+ </Panel></DataTemplate></ItemsControl.ItemTemplate>
+</ItemsControl>
+
+                              </StackPanel>
+                            </Grid>
+                            <ProgressBar Classes="rowProgress" Minimum="0" Maximum="1" Value="{Binding Progress, FallbackValue=0}" IsIndeterminate="{Binding IsProgressIndeterminate}" IsVisible="{Binding IsCardRunning}" />
+                          </Panel>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel IsVisible="{Binding !HasVisibleTasks}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5" Margin="14">
+                      <TextBlock Classes="sectionLabel" HorizontalAlignment="Center" Text="{Binding TaskListEmptyText}" TextWrapping="Wrap" />
+                      <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="调整搜索词或筛选条件后重试。" />
+                    </StackPanel>
+                  </Grid>
+                </DockPanel>
+              </Border>
+<Border Grid.Row="1" Grid.Column="1" Classes="vline" />
+<Panel Grid.Row="1" Grid.Column="2">
+<Border Classes="card" IsVisible="{Binding ShowTaskEmpty}">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" MaxWidth="520">
+          <fi:FluentIcon Icon="CalendarClock" IconSize="Size48" Foreground="#94A3B8" HorizontalAlignment="Center" />
+          <TextBlock Classes="textSectionTitle" Text="选择任务查看设置和运行记录" HorizontalAlignment="Center" TextWrapping="Wrap" />
+          <TextBlock Classes="textSecondary" TextWrapping="Wrap" TextAlignment="Center"
+                     Text="每次运行都按步骤显示：哪一步在跑、哪一步失败、为什么失败。失败时可以直接打开运行日志。" />
+        </StackPanel>
+      </Border>
+<DockPanel IsVisible="{Binding ShowTaskDetails}">
+<Grid x:Name="TaskHeaderGrid" DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto"
+                      ColumnSpacing="10" RowSpacing="3" Margin="20,12,20,0">
+                  <Border Grid.RowSpan="2" Classes="headIcon" VerticalAlignment="Center">
+                    <fi:FluentIcon Icon="{Binding HeaderIcon}" />
+                  </Border>
+                  <Grid x:Name="TaskHeaderIdentity" Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource FgPrimaryBrush}"
+                               MaxWidth="360" VerticalAlignment="Center" Text="{Binding HeaderTitle}"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding HeaderTitle}" />
+                    <TextBlock Grid.Column="1" Classes="meta" Text="{Binding HeaderSubtitle}"
+                               ToolTip.Tip="{Binding HeaderSubtitle}" />
+                  </Grid>
+                  <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <fi:FluentIcon Classes="metaIcon" Icon="Flash" />
+                      <TextBlock Classes="meta" Text="{Binding SelectedTask.Schedule, FallbackValue=''}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <Ellipse Classes="dot" Classes.succeeded="{Binding SelectedTask.IsCardSucceeded, FallbackValue=False}"
+                               Classes.failed="{Binding SelectedTask.IsCardFailed, FallbackValue=False}"
+                               Classes.running="{Binding SelectedTask.IsCardRunning, FallbackValue=False}" />
+                      <TextBlock Classes="st" Classes.succeeded="{Binding SelectedTask.IsCardSucceeded, FallbackValue=False}"
+                                 Classes.failed="{Binding SelectedTask.IsCardFailed, FallbackValue=False}"
+                                 Classes.running="{Binding SelectedTask.IsCardRunning, FallbackValue=False}"
+                                 Text="{Binding SelectedTask.CardStatus, FallbackValue=''}" />
+                      <TextBlock Classes="meta" Text="{Binding SelectedTask.CardTime, FallbackValue=''}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <WrapPanel x:Name="TaskHeaderActions" Grid.Column="2" Grid.RowSpan="2" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" VerticalAlignment="Center">
+              <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="查看历史"
+                                  Command="{Binding ViewHistoryCommand}" IsVisible="{Binding IsSelectedTaskInvalid}">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="History" IconSize="Size16" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <buttons:IconButton Classes="contentButton buttonDanger buttonSmall" Text="移除"
+                                  Command="{Binding DeleteSelectedCommand}" IsVisible="{Binding IsSelectedTaskInvalid}"
+                                  IsEnabled="{Binding CanDeleteSelected}" ToolTip.Tip="{Binding DeleteTip}">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="Delete" IconSize="Size16" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <buttons:IconButton Classes="contentButton buttonPrimary buttonSmall" Text="手动执行"
+                                  Command="{Binding RunSelectedCommand}" IsVisible="{Binding ShowManualRun}"
+                                  IsEnabled="{Binding CanRunSelected}" ToolTip.Tip="{Binding RunButtonTip}">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" IconSize="Size16" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <buttons:IconButton Classes="contentButton buttonDanger buttonSmall" Text="停止" Command="{Binding CancelSelectedCommand}"
+                                  IsVisible="{Binding CanCancelSelected}" ToolTip.Tip="停止正文后进入收尾；收尾期间再次停止将保留进度，等待重试">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="Stop" IconSize="Size16" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowSaveActions}" IsEnabled="{Binding HasUnsavedChanges}">
+                <buttons:IconButton Classes="contentButton buttonPrimary buttonSmall" Width="80" Text="保存"
+                                    Command="{Binding SaveSettingsCommand}">
+                  <buttons:IconButton.Icon><fi:FluentIcon Icon="Save" IconSize="Size16" /></buttons:IconButton.Icon>
+                </buttons:IconButton>
+                <Button Classes="contentButton buttonSecondary buttonSmall" Width="80" Content="放弃"
+                        Command="{Binding DiscardEditsCommand}" />
+              </StackPanel>
+              <Button Classes="contentButton buttonQuiet buttonSmall" ToolTip.Tip="更多操作" IsVisible="{Binding !IsSelectedTaskInvalid}">
+                <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                  <fi:FluentIcon Icon="MoreHorizontal" IconSize="Size16" />
+                  <fi:FluentIcon Icon="ChevronDown" IconSize="Size12" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,1,0,0" />
+                </StackPanel>
+                <Button.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedRight">
+                    <MenuItem Header="上传流程版本…" IsVisible="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).CanUploadWorkflow}" Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).OpenWorkflowUploadCommand}" />
+                    <MenuItem Header="复制为新任务" Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).DuplicateSelectedCommand}"
+                              IsVisible="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).CanDuplicateSelected}">
+                      <MenuItem.Icon><fi:FluentIcon Icon="Copy" IconSize="Size16" /></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="删除任务" Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).DeleteSelectedCommand}"
+                              IsVisible="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).CanDeleteSelected}">
+                      <MenuItem.Icon><fi:FluentIcon Icon="Delete" IconSize="Size16" /></MenuItem.Icon>
+                    </MenuItem>
+                  </MenuFlyout>
+                </Button.Flyout>
+              </Button>
+            </WrapPanel>
+                </Grid>
+<ListBox DockPanel.Dock="Top" Classes="tabs" SelectedIndex="{Binding PageTabIndex, Mode=TwoWay}" Margin="20,6,20,0">
+<ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+<ListBoxItem IsEnabled="{Binding HasEditor}"><Border Classes="tabLine"><TextBlock Text="参数设置" /></Border></ListBoxItem>
+<ListBoxItem><Border Classes="tabLine"><TextBlock Text="编排" /></Border></ListBoxItem>
+<ListBoxItem><Border Classes="tabLine"><TextBlock Text="运行记录" /></Border></ListBoxItem>
+</ListBox><Border DockPanel.Dock="Top" Classes="hline" />
+<Border DockPanel.Dock="Bottom" IsVisible="{Binding IsRunsTab}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0">
+<DockPanel>
+<Button DockPanel.Dock="Top" Classes="logDrawerHeader" Command="{Binding ToggleRunLogDrawerCommand}" AutomationProperties.Name="展开 / 收起运行日志">
+<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><TextBlock Classes="body" FontWeight="Medium" Text="运行日志" /><TextBlock Grid.Column="1" Classes="meta" Text="{Binding SelectedRun.Title}" />
+<Panel Grid.Column="2"><fi:FluentIcon Icon="ChevronUp" IconSize="Size16" IsVisible="{Binding !IsRunReportExpanded}" /><fi:FluentIcon Icon="ChevronDown" IconSize="Size16" IsVisible="{Binding IsRunReportExpanded}" /></Panel></Grid>
+</Button>
+<Grid IsVisible="{Binding IsRunReportExpanded}" RowDefinitions="Auto,*">
+<StackPanel Orientation="Horizontal" Spacing="8" Margin="20,4" IsVisible="{Binding SelectedRun.HasReport}"><Button Classes="contentButton buttonQuiet buttonSmall" Content="日志" Command="{Binding OpenEvidenceCommand}" /><Button Classes="contentButton buttonQuiet buttonSmall" Content="运行报告" Command="{Binding ShowRunReportCommand}" /></StackPanel>
+<TextBox Grid.Row="1" Text="{Binding SelectedRun.Report, Mode=OneWay}" IsVisible="{Binding !ShowRunLogs}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="220" Margin="20,0,20,12" />
+<ContentControl x:Name="RunLogsHost" Grid.Row="1" Content="{Binding LogsContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<views:AutomationLogsView AttachedToVisualTree="RunLogs_Attached" Height="260" DataContext="{Binding Logs}" />
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+</Grid></DockPanel></Border>
+<Panel>
+<ContentControl x:Name="ParametersHost" Content="{Binding ParametersContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<Grid AttachedToVisualTree="ParametersContent_Attached" IsVisible="{Binding IsParametersTab}" IsEnabled="{Binding !IsScriptBusy}" ColumnDefinitions="160,*" ColumnSpacing="28" Margin="24,18,20,20">
+  <ListBox x:Name="ParameterNavigation" Classes="sectionNav" VerticalAlignment="Top" ItemsSource="{Binding ParameterSections}"
+           SelectedItem="{Binding SelectedParameterSection, Mode=TwoWay}" SelectionChanged="ParameterNavigation_SelectionChanged">
+    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:AutomationParameterNavigationItem"><TextBlock Classes="body" Text="{Binding Title}" /></DataTemplate></ListBox.ItemTemplate>
+  </ListBox>
+  <ScrollViewer x:Name="DeferredSettingsScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel x:Name="DeferredParameterContent" DataContext="{Binding Editor}" x:DataType="vm:AutomationEditorViewModel" Spacing="24" Width="{Binding #DeferredSettingsScroll.Bounds.Width}" MaxWidth="640" HorizontalAlignment="Left" Margin="0,0,12,24" >
+<StackPanel Spacing="10" x:Name="DeferredGroupSchedule" Classes="settingsGroup">
+                      <TextBlock Classes="paneTitle" Text="触发器" />
+                      <Border BorderThickness="0" Padding="0">
+                        <StackPanel>
+                          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,10">
+                            <fi:FluentIcon Icon="Play" IconSize="Size16" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Spacing="2">
+                              <TextBlock Classes="textBody" Text="手动触发" />
+                              <TextBlock Classes="textMeta" Text="按钮、CLI 或托盘启动" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="2" IsChecked="{Binding ManualEnabled, Mode=TwoWay}" OnContent="" OffContent=""
+                                          VerticalAlignment="Center" AutomationProperties.Name="启用手动触发" />
+                          </Grid>
+                          <Rectangle Classes="divider" />
+                          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,10">
+                            <fi:FluentIcon Icon="Clock" IconSize="Size16" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Spacing="2">
+                              <TextBlock Classes="textBody" Text="定时触发" />
+                              <TextBlock Classes="textMeta" Text="{Binding ScheduleTriggerDescription}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="2" IsChecked="{Binding ScheduleEnabled, Mode=TwoWay}" OnContent="" OffContent=""
+                                          VerticalAlignment="Center" AutomationProperties.Name="启用定时触发" />
+                          </Grid>
+                        </StackPanel>
+                      </Border>
+                      <Expander Header="时间设置" IsVisible="{Binding ScheduleEnabled}" IsExpanded="{Binding IsScheduleDetailsExpanded, Mode=TwoWay}">
+                        <StackPanel Spacing="12" Margin="0,4,0,0">
+                          <ItemsControl ItemsSource="{Binding Schedules}">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="16" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:AutomationScheduleViewModel">
+                                <StackPanel Spacing="8">
+                                  <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding CanRemove}">
+                                    <TextBlock Classes="textBody" FontWeight="SemiBold" Text="{Binding Title}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="contentButton buttonQuiet buttonSmall" Content="删除" Command="{Binding RemoveCommand}"
+                                            AutomationProperties.Name="{Binding Title, StringFormat='删除{0}'}" />
+                                  </Grid>
+                                  <WrapPanel>
+                                    <StackPanel Spacing="4" Margin="0,0,12,8">
+                                      <TextBlock Classes="textMeta" Text="执行频率" />
+                                      <ComboBox ItemsSource="{Binding Frequencies}" SelectedItem="{Binding Frequency, Mode=TwoWay}" MinWidth="100" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="4" Margin="0,0,0,8">
+                                      <TextBlock Classes="textMeta" Text="执行时间" />
+                                      <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <ComboBox ItemsSource="{Binding Hours}" SelectedItem="{Binding SelectedHour, Mode=TwoWay}" Width="72" MinWidth="0" ToolTip.Tip="小时" />
+                                        <TextBlock Text=":" VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding Minutes}" SelectedItem="{Binding SelectedMinute, Mode=TwoWay}" Width="72" MinWidth="0" ToolTip.Tip="分钟" />
+                                      </StackPanel>
+                                    </StackPanel>
+                                  </WrapPanel>
+                                  <StackPanel Spacing="6" IsVisible="{Binding IsWeekly}">
+                                    <ItemsControl ItemsSource="{Binding Days}">
+                                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                      <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:AutomationWeekDay">
+                                          <CheckBox Content="{Binding Label}" IsChecked="{Binding Selected, Mode=TwoWay}" Margin="0,0,12,0" />
+                                        </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Classes="contentButton buttonQuiet buttonSmall" Content="选择周一至周五" Command="{Binding SelectWeekdaysCommand}" HorizontalAlignment="Left" />
+                                  </StackPanel>
+                                  <StackPanel Spacing="6" IsVisible="{Binding IsMonthly}">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                      <TextBlock Text="每月" VerticalAlignment="Center" />
+                                      <ComboBox ItemsSource="{Binding MonthDays}" SelectedItem="{Binding MonthDay, Mode=TwoWay}" IsEnabled="{Binding CanSelectMonthDay}" MinWidth="72" />
+                                      <TextBlock Text="日" VerticalAlignment="Center" />
+                                      <CheckBox Content="最后一天" IsChecked="{Binding LastDayOfMonth, Mode=TwoWay}" />
+                                    </StackPanel>
+                                  </StackPanel>
+                                  <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Classes="textMeta" Text="时区" VerticalAlignment="Center" />
+                                    <ComboBox ItemsSource="{Binding TimeZones}" SelectedItem="{Binding TimeZone, Mode=TwoWay}" MinWidth="160" />
+                                  </StackPanel>
+                                </StackPanel>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <TextBlock Classes="textMeta" Text="{Binding ScheduleConflict}" IsVisible="{Binding HasScheduleConflict}"
+                                     Foreground="{DynamicResource TextDangerBrush}" TextWrapping="Wrap" />
+                          <Button Classes="contentButton buttonSecondary buttonSmall" Command="{Binding AddScheduleCommand}" HorizontalAlignment="Left"
+                                  AutomationProperties.Name="添加定时触发时间">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                              <fi:FluentIcon Icon="Add" IconSize="Size16" />
+                              <TextBlock Text="添加时间" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </Button>
+                        </StackPanel>
+                      </Expander>
+                    </StackPanel>
+<Rectangle Classes="divider" />
+<StackPanel Spacing="6" IsVisible="{Binding HasViolations}">
+                      <TextBlock Classes="groupTitle" Text="保存检查" />
+                      <ItemsControl ItemsSource="{Binding Violations}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:AutomationViolationItem">
+                            <Border Background="{Binding Background}" BorderBrush="{Binding Foreground}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <TextBlock Text="{Binding Glyph}" Foreground="{Binding Foreground}" FontWeight="Bold" VerticalAlignment="Top" />
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                  <SelectableTextBlock Classes="textMeta" Text="{Binding Message}" Foreground="{Binding Foreground}" TextWrapping="Wrap" />
+                                  <Button Classes="contentButton buttonQuiet buttonSmall" Content="查看冲突的任务" HorizontalAlignment="Left" Padding="0"
+                                          IsVisible="{Binding HasConflict}" CommandParameter="{Binding}"
+                                          Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).OpenConflictCommand}" />
+                                </StackPanel>
+                              </Grid>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+<StackPanel Spacing="10" x:Name="DeferredGroupTask" Classes="settingsGroup">
+                      <TextBlock Classes="paneTitle" Text="任务" />
+                      <StackPanel Spacing="4">
+                        <TextBlock Classes="textMeta" Text="本地昵称" />
+                        <TextBox Text="{Binding Name, Mode=TwoWay}" PlaceholderText="{Binding TemplateTitle}" MaxLength="40" />
+                        <TextBlock Classes="textSecondary" Text="昵称只用于本机，不改变云端任务名称或 taskId。" TextWrapping="Wrap" />
+                        <TextBlock Classes="textMeta" Text="云端任务" />
+                        <SelectableTextBlock Text="{Binding CloudTaskName}" TextWrapping="Wrap" />
+                        <SelectableTextBlock Classes="textCode" Text="{Binding CloudTaskId}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </StackPanel>
+<Rectangle Classes="divider" />
+<StackPanel Spacing="10" x:Name="DeferredGroupOptions" Classes="settingsGroup">
+
+                      <ItemsControl x:Name="DeferredParameterGroups" ItemsSource="{Binding VisibleParameterGroups}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="24" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:AutomationParameterGroupViewModel">
+                            <Border Classes="parameterSection" Classes.named="{Binding HasTitle}">
+                            <StackPanel Spacing="12">
+                              <StackPanel Spacing="8" IsVisible="{Binding HasTitle}">
+                                <TextBlock Classes="parameterSectionTitle" Text="{Binding Title}" />
+                                <Rectangle Classes="divider" />
+                              </StackPanel>
+                      <ItemsControl ItemsSource="{Binding VisibleFields}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="16" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:AutomationFieldViewModel">
+                            <Panel IsVisible="{Binding IsVisible}">
+                              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding IsToggle}">
+                                <StackPanel Spacing="2" VerticalAlignment="Center">
+                                  <TextBlock Classes="textBody" Text="{Binding Label}" TextWrapping="Wrap" />
+                                  <TextBlock Classes="textMeta" Text="{Binding Hint}" IsVisible="{Binding HasHint}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding BoolValue, Mode=TwoWay}" OnContent="" OffContent=""
+                                              IsEnabled="{Binding !Field.IsReadOnly}" VerticalAlignment="Center" />
+                              </Grid>
+                              <StackPanel Spacing="4" IsVisible="{Binding IsText}">
+                                <TextBlock Classes="textMeta" Text="{Binding Label}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                  <TextBox Text="{Binding Value, Mode=TwoWay}" PlaceholderText="{Binding Placeholder}" IsReadOnly="{Binding Field.IsReadOnly}" />
+                                  <Button Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Content="浏览"
+                                          IsVisible="{Binding IsFolder}" IsEnabled="{Binding !Field.IsReadOnly}" Click="BrowseFolder_Click" />
+                                </Grid>
+                                <TextBlock Classes="textMeta" Text="{Binding Hint}" IsVisible="{Binding HasHint}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel Spacing="4" IsVisible="{Binding IsChoice}">
+                                <TextBlock Classes="textMeta" Text="{Binding Label}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                  <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"
+                                            IsEnabled="{Binding CanSelectChoice}" HorizontalAlignment="Stretch" MinWidth="140"
+                                            ToolTip.Tip="{Binding SelectedChoice.ToolTip}">
+                                    <ComboBox.ItemTemplate>
+                                      <DataTemplate x:DataType="auto:AutomationChoice"><TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ToolTip}" /></DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                  </ComboBox>
+                                  <Button Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Content="重新读取"
+                                          IsVisible="{Binding HasDynamicChoices}" IsEnabled="{Binding !IsLoadingChoices}"
+                                          Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Editor.RefreshFieldChoicesCommand}" />
+                                </Grid>
+                                <TextBlock Classes="textMeta" Text="{Binding ChoicesStatus}" IsVisible="{Binding HasChoicesStatus}" TextWrapping="Wrap" />
+                                <TextBlock Classes="textMeta" Text="{Binding Hint}" IsVisible="{Binding HasHint}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel Spacing="4" IsVisible="{Binding IsMultiChoice}">
+                                <TextBlock Classes="textMeta" Text="{Binding Label}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                  <Button Classes="contentButton buttonSecondary" HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Stretch" IsEnabled="{Binding CanSelectChoice}"
+                                          ToolTip.Tip="{Binding SelectionSummary}">
+
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"><TextBlock Text="{Binding SelectionSummary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><fi:FluentIcon Grid.Column="1" Icon="ChevronDown" IconSize="Size16" VerticalAlignment="Center" /></Grid>
+<Button.Flyout>
+                                      <Flyout Placement="BottomEdgeAlignedLeft">
+                                        <StackPanel Spacing="8" MinWidth="280" MaxWidth="440">
+                                          <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Classes="contentButton buttonSecondary buttonSmall" Content="全选" Command="{Binding SelectAllChoicesCommand}" />
+                                            <Button Classes="contentButton buttonSecondary buttonSmall" Content="清空" Command="{Binding ClearChoicesCommand}" />
+                                          </StackPanel>
+                                          <ScrollViewer MaxHeight="280" HorizontalScrollBarVisibility="Disabled">
+                                            <ItemsControl ItemsSource="{Binding MultiChoices}">
+                                              <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:AutomationMultiChoiceViewModel">
+                                                  <CheckBox Content="{Binding Label}" IsChecked="{Binding IsSelected, Mode=TwoWay}" ToolTip.Tip="{Binding ToolTip}" />
+                                                </DataTemplate>
+                                              </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                          </ScrollViewer>
+                                        </StackPanel>
+                                      </Flyout>
+                                    </Button.Flyout>
+                                  </Button>
+                                  <Button Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Content="重新读取"
+                                          IsVisible="{Binding HasDynamicChoices}" IsEnabled="{Binding !IsLoadingChoices}"
+                                          Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Editor.RefreshFieldChoicesCommand}" />
+                                </Grid>
+                                <TextBlock Classes="textMeta" Text="{Binding ChoicesStatus}" IsVisible="{Binding HasChoicesStatus}" TextWrapping="Wrap" />
+                                <TextBlock Classes="textMeta" Text="{Binding Hint}" IsVisible="{Binding HasHint}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <StackPanel Spacing="4" IsVisible="{Binding IsMultiline}">
+                                <TextBlock Classes="textFieldLabel" Text="{Binding Label}" />
+                                <TextBox Text="{Binding Value, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" IsReadOnly="{Binding Field.IsReadOnly}"
+                                         VerticalContentAlignment="Top" HorizontalContentAlignment="Left" Padding="10,8"
+                                         Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextDefaultBrush}"
+                                         MinHeight="120" MaxHeight="280" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                <TextBlock Classes="textMeta" Text="{Binding Hint}" IsVisible="{Binding HasHint}" TextWrapping="Wrap" />
+                              </StackPanel>
+                            </Panel>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                            </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <StackPanel Spacing="4" IsVisible="{Binding HasParameterPreview}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                          <TextBlock Classes="textFieldLabel" Text="全参数渲染列表" VerticalAlignment="Center" />
+                          <Button Grid.Column="1" Classes="contentButton buttonQuiet buttonSmall" Content="放大查看"
+                                  Click="ExpandParameterPreview_Click" />
+                        </Grid>
+                        <TextBox Text="{Binding ParameterPreview, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
+                                 TextWrapping="Wrap" MinHeight="160" MaxHeight="320" Padding="10,8"
+                                 VerticalContentAlignment="Top" HorizontalContentAlignment="Left"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                      </StackPanel>
+
+
+                    </StackPanel>
+<StackPanel x:Name="DeferredGroupBehavior" Spacing="12"><TextBlock Classes="paneTitle" Text="运行行为" /><Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                          <TextBlock Classes="textBody" Text="允许同一任务并行执行" />
+                          <TextBlock Classes="textMeta" Text="每次执行独立记录，仍遵循资源锁与并发上限" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding AllowParallel, Mode=TwoWay}" OnContent="" OffContent=""
+                                      VerticalAlignment="Center" />
+                      </Grid></StackPanel>
+<Rectangle Classes="divider" />
+<StackPanel x:Name="DeferredGroupNotification" Spacing="12"><TextBlock Classes="paneTitle" Text="结果通知" /><Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                          <TextBlock Classes="textBody" Text="成功时也通知" />
+                          <TextBlock Classes="textMeta" Text="失败总会通知；已跳过不通知" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding NotifyOnSuccess, Mode=TwoWay}" OnContent="" OffContent=""
+                                      VerticalAlignment="Center" />
+                      </Grid></StackPanel>
+<TextBlock Classes="textMeta" Text="{Binding Error}" IsVisible="{Binding HasError}" TextWrapping="Wrap" Foreground="{DynamicResource TextDangerBrush}" />
+    </StackPanel>
+  </ScrollViewer>
+</Grid>
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+<Border IsVisible="{Binding ShowRunArea}" Padding="0">
+            <Grid x:Name="RunGrid" ColumnDefinitions="188,*">
+              <Border x:Name="RunHistoryPanel" DataContext="{Binding #AutomationPage.((vm:AutomationPageViewModel)DataContext)}"
+                      Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,1,0">
+                <ContentControl x:Name="HistoryHost" Content="{Binding HistoryContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<Grid RowDefinitions="Auto,*">
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="22,14,10,8"><TextBlock Classes="sectionLabel" Text="运行记录" /><TextBlock Classes="meta" Text="近 50 次" /></StackPanel>
+                  <!-- 固定第一项：查看当前任务的完整编排（含隐藏的预检节点，如 校验并修正 P4 环境）。 -->
+
+                  <ListBox Grid.Row="1" Classes="flat" ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRun, Mode=TwoWay}" IsVisible="{Binding HasRuns}" Margin="10,0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+<ListBox.ItemTemplate><DataTemplate x:DataType="vm:AutomationRunItemViewModel"><Panel ToolTip.Tip="{Binding Summary}">
+<Border Classes="selBar" IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+<Grid Classes="runRow" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8"><Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Classes="body" Text="{Binding Title}" /><TextBlock Grid.Column="2" Classes="meta" Text="{Binding TriggerText}" /></Grid>
+</Panel></DataTemplate></ListBox.ItemTemplate></ListBox>
+                  <TextBlock Grid.Row="1" Classes="textMeta" Text="还没有运行过" Margin="16,0" IsVisible="{Binding !HasRuns}" />
+                </Grid>
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+              </Border>
+
+              <Grid x:Name="RunDetailArea" Grid.Column="1" RowDefinitions="Auto,Auto,*">
+                <!-- 顶栏：任务编排提供脚本重载与手动执行；选中运行时是运行概要 -->
+                <Border BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="20,14" IsVisible="{Binding !HasRun}">
+                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                      <Border Padding="10,3" CornerRadius="12" Background="{DynamicResource NeutralStatusBgBrush}" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding RunAreaBadge}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" FontWeight="SemiBold" />
+                      </Border>
+                      <TextBlock Classes="textBody" FontWeight="SemiBold" Text="按当前设置将执行的完整流程"
+                                 IsVisible="{Binding HasEditor}" VerticalAlignment="Center" />
+                      <TextBlock Classes="textBody" FontWeight="SemiBold" Text="{Binding RunAreaEmptyText}"
+                                 IsVisible="{Binding !HasEditor}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                      <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="{Binding TaskScriptReloadText}"
+                                          Command="{Binding ReloadSelectedScriptCommand}" IsVisible="{Binding ShowTaskScriptReload}"
+                                          ToolTip.Tip="{Binding TaskScriptReloadTip}">
+                        <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowClockwise" IconSize="Size16" /></buttons:IconButton.Icon>
+                      </buttons:IconButton>
+                      <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="选择步骤"
+                                          Command="{Binding StartStepSelectionCommand}" IsVisible="{Binding ShowSelectSteps}"
+                                          ToolTip.Tip="勾选要运行的步骤或整段阶段，只运行这些；其余本次跳过，收尾照常执行">
+                        <buttons:IconButton.Icon><fi:FluentIcon Icon="CheckboxChecked" IconSize="Size16" /></buttons:IconButton.Icon>
+                      </buttons:IconButton>
+                      <Button Classes="contentButton buttonSecondary buttonSmall" Content="取消" Command="{Binding CancelStepSelectionCommand}"
+                              IsVisible="{Binding IsSelectingSteps}" />
+                      <buttons:IconButton Classes="contentButton buttonPrimary buttonSmall" Text="{Binding RunSelectedStepsText}"
+                                          Command="{Binding RunSelectedStepsCommand}" IsVisible="{Binding IsSelectingSteps}" IsEnabled="{Binding HasStepSelection}"
+                                          ToolTip.Tip="用已保存的参数运行一次，只执行勾选的步骤">
+                        <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" IconSize="Size16" /></buttons:IconButton.Icon>
+                      </buttons:IconButton>
+                      <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="手动执行"
+                                          Command="{Binding RunSelectedCommand}" IsEnabled="{Binding CanRunSelected}" IsVisible="{Binding ShowManualRun}"
+                                          ToolTip.Tip="{Binding RunButtonTip}">
+                        <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" IconSize="Size16" /></buttons:IconButton.Icon>
+                      </buttons:IconButton>
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="textMeta" Text="{Binding TaskScriptMessage}"
+                               IsVisible="{Binding HasTaskScriptMessage}" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding TaskScriptMessage}" />
+                  </Grid>
+                </Border>
+                <Panel IsVisible="{Binding HasRun}">
+                    <Border BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="20,14"
+                            DataContext="{Binding SelectedRun}" x:DataType="vm:AutomationRunItemViewModel">
+                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12">
+                        <StackPanel Spacing="6">
+                          <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Padding="10,3" CornerRadius="12" Background="{Binding StatusBackground}" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="12" FontWeight="SemiBold" />
+                            </Border>
+                            <TextBlock Classes="textBody" FontWeight="{DynamicResource ContentItemFontWeight}" Text="{Binding Title}" VerticalAlignment="Center" />
+                            <TextBlock Classes="textMeta" Text="{Binding TriggerSourceText, StringFormat='{}{0}触发'}" VerticalAlignment="Center" />
+                            <TextBlock Classes="textMeta" Text="{Binding Duration, StringFormat='耗时 {0}'}" VerticalAlignment="Center"
+                                       IsVisible="{Binding HasDuration}" />
+                          </StackPanel>
+                          <TextBlock Classes="textSecondary" Text="{Binding SummaryPreview}" TextTrimming="CharacterEllipsis"
+                                     MinHeight="18" ToolTip.Tip="{Binding SummaryPreview}" />
+                          <TextBlock Text="{Binding Warning}" IsVisible="{Binding HasWarning}" TextWrapping="Wrap"
+                                     Foreground="{DynamicResource TextWarningBrush}" />
+                          <!-- 派生运行：来源胶囊 + 跳回来源；被派生过的记录列出派生链接（样式见 AutomationGraph.axaml / Gallery 重试与从节点重新运行） -->
+                          <StackPanel Orientation="Horizontal" Spacing="8"
+                                      DataContext="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution}"
+                                      x:DataType="vm:AutomationReexecutionViewModel" IsVisible="{Binding HasSource}">
+                            <Border Classes="lineageChip">
+                              <StackPanel Orientation="Horizontal" Spacing="4">
+                                <fi:FluentIcon Icon="ArrowClockwise" IconSize="Size12" />
+                                <TextBlock Text="{Binding SourceCaption}" />
+                              </StackPanel>
+                            </Border>
+                            <TextBlock Classes="textMeta" Text="来源" VerticalAlignment="Center" />
+                            <Button Classes="contentButton buttonLink" Padding="0" Content="{Binding SourceLinkText}"
+                                    IsEnabled="{Binding CanOpenSource}" Command="{Binding OpenSourceCommand}" />
+                            <TextBlock Classes="textMeta" Text="· 使用原运行参数" VerticalAlignment="Center" />
+                          </StackPanel>
+                          <StackPanel Orientation="Horizontal" Spacing="6"
+                                      DataContext="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution}"
+                                      x:DataType="vm:AutomationReexecutionViewModel" IsVisible="{Binding HasDerivedRuns}">
+                            <TextBlock Classes="textMeta" Text="已派生" VerticalAlignment="Center" />
+                            <ItemsControl ItemsSource="{Binding DerivedRuns}">
+                              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:AutomationDerivedRunLink">
+                                  <Button Classes="contentButton buttonLink" Padding="0" Margin="0,0,12,0" Content="{Binding Text}" CommandParameter="{Binding}"
+                                          Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution.OpenDerivedCommand}" />
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="8">
+                        <Button Classes="contentButton buttonSecondary buttonSmall"
+                                Content="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).ReviewSettingsButtonText}"
+                                IsVisible="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).CanViewReviewSettings}"
+                                Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).ToggleReviewSettingsCommand}" />
+                        <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="运行日志"
+                                            IsVisible="{Binding HasEvidence}" CommandParameter="{Binding}" VerticalAlignment="Top"
+                                            Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).OpenEvidenceCommand}"
+                                            ToolTip.Tip="查看本次运行的完整过程日志">
+                          <buttons:IconButton.Icon><fi:FluentIcon Icon="DocumentText" IconSize="Size16" /></buttons:IconButton.Icon>
+                        </buttons:IconButton>
+                        </StackPanel>
+                        <!-- 继续 / 重新运行确认：先只读预检，可运行才允许确认；不可用时写明原因，不产生记录 -->
+                        <Border Grid.Row="1" Grid.ColumnSpan="2" Classes="reexecutionConfirm" Margin="0,12,0,0" MaxWidth="760" HorizontalAlignment="Left"
+                                DataContext="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).Reexecution}"
+                                x:DataType="vm:AutomationReexecutionViewModel"
+                                IsVisible="{Binding IsConfirmOpen}" Classes.blocked="{Binding HasConfirmProblem}">
+                          <StackPanel Spacing="8">
+                            <TextBlock Classes="textBody" FontWeight="SemiBold" Text="{Binding ConfirmTitle}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsChecking}">
+                              <ProgressBar IsIndeterminate="True" Width="80" MinWidth="80" Height="2" MinHeight="2" VerticalAlignment="Center" />
+                              <TextBlock Classes="textMeta" Text="正在检查原运行的检查点…" />
+                            </StackPanel>
+                            <TextBlock Classes="textSecondary" Text="{Binding ConfirmSummary}" IsVisible="{Binding HasConfirmSummary}" TextWrapping="Wrap" />
+                            <TextBlock Classes="textMeta" Text="使用原运行参数新建一条记录，原记录、日志和制品保留。"
+                                       IsVisible="{Binding HasConfirmSummary}" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding ConfirmProblem}" IsVisible="{Binding HasConfirmProblem}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextDangerBrush}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <Button Classes="contentButton buttonPrimary buttonSmall" Content="确认运行"
+                                      IsEnabled="{Binding CanConfirm}" Command="{Binding ConfirmCommand}" />
+                              <Button Classes="contentButton buttonSecondary buttonSmall" Content="{Binding DismissText}"
+                                      Command="{Binding CancelConfirmCommand}" />
+                            </StackPanel>
+                          </StackPanel>
+                        </Border>
+                      </Grid>
+                    </Border>
+                </Panel>
+
+                <TabStrip Grid.Row="1" SelectedIndex="{Binding RunViewIndex, Mode=TwoWay}" IsVisible="{Binding HasRun}" Margin="16,4,16,0">
+                  <TabStripItem Content="执行流程" />
+                  <TabStripItem Content="启动参数" />
+                  <TabStripItem Content="制品" />
+                </TabStrip>
+
+                <ContentControl x:Name="LaunchParametersHost" Grid.Row="2" Content="{Binding LaunchContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<ScrollViewer IsVisible="{Binding ShowLaunchParameters}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                  <StackPanel Margin="20,16" Spacing="16" DataContext="{Binding SelectedRun}" x:DataType="vm:AutomationRunItemViewModel">
+                    <TextBlock Classes="textSecondary" Text="{Binding LaunchSnapshotNotice}" TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
+                      <TextBlock Classes="textFieldLabel" Text="云端任务" /><SelectableTextBlock Grid.Column="1" Text="{Binding LaunchCloudTaskName}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="1" Classes="textFieldLabel" Text="taskId" /><SelectableTextBlock Grid.Row="1" Grid.Column="1" Classes="textCode" Text="{Binding LaunchCloudTaskId}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="2" Classes="textFieldLabel" Text="本地昵称" /><SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LaunchLocalNickname}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="3" Classes="textFieldLabel" Text="执行机器" /><SelectableTextBlock Grid.Row="3" Grid.Column="1" Classes="textCode" Text="{Binding LaunchMachineName}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="4" Classes="textFieldLabel" Text="触发方式" /><TextBlock Grid.Row="4" Grid.Column="1" Classes="textBody" Text="{Binding TriggerSourceText}" />
+                      <TextBlock Grid.Row="5" Classes="textFieldLabel" Text="模板" /><SelectableTextBlock Grid.Row="5" Grid.Column="1" Classes="textCode" Text="{Binding LaunchTemplateId}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Row="6" Classes="textFieldLabel" Text="脚本版本" /><SelectableTextBlock Grid.Row="6" Grid.Column="1" Classes="textCode" Text="{Binding LaunchScriptRevision}" TextWrapping="Wrap" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding LaunchParameterRows}">
+                      <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:AutomationLaunchParameterRow">
+                        <Grid ColumnDefinitions="140,*" ColumnSpacing="16" Margin="0,0,0,10">
+                          <TextBlock Classes="textFieldLabel" Text="{Binding Label}" ToolTip.Tip="{Binding Key}" TextWrapping="Wrap" />
+                          <SelectableTextBlock Grid.Column="1" Classes="textCode" Text="{Binding Value}" TextWrapping="Wrap" />
+                        </Grid>
+                      </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Spacing="8" IsVisible="{Binding HasLaunchRenderedParameters}">
+                      <TextBlock Classes="textSectionTitle" Text="启动命令参数" />
+                      <SelectableTextBlock Classes="textCode" Text="{Binding LaunchRenderedParameters}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+
+                <!-- 主图（没跑过）：按当前设置画出流程，节点全部「等待」 -->
+                <ContentControl x:Name="PlanHost" Grid.Row="2" Content="{Binding PlanContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Visible">
+                  <ScrollViewer.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                      <Binding Path="!HasRun" />
+                      <Binding Path="!HasSubgraph" />
+                    </MultiBinding>
+                  </ScrollViewer.IsVisible>
+                  <StackPanel Margin="20,16" Spacing="12">
+                  <TextBlock Text="{Binding Editor.PlanPreviewError}" IsVisible="{Binding Editor.HasPlanPreviewError}"
+                             Foreground="{DynamicResource TextDangerBrush}" TextWrapping="Wrap" />
+                  <ItemsControl ItemsSource="{Binding Editor.PlanPreview, FallbackValue={x:Null}}" ItemTemplate="{StaticResource GraphStageTemplate}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><graphs:DependencyGraphPanel Classes="automationLane" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  </ItemsControl>
+                  </StackPanel>
+                </ScrollViewer>
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+
+                    <!-- 主图（选中运行） -->
+                    <ContentControl x:Name="WorkflowHost" Grid.Row="2" Content="{Binding WorkflowContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Visible">
+                      <ScrollViewer.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                          <Binding Path="HasRun" />
+                          <Binding Path="!HasSubgraph" />
+                          <Binding Path="ShowWorkflowView" />
+                        </MultiBinding>
+                      </ScrollViewer.IsVisible>
+                      <StackPanel Margin="20,16" Spacing="18" DataContext="{Binding SelectedRun}" x:DataType="vm:AutomationRunItemViewModel">
+                        <Border DataContext="{Binding $parent[UserControl].DataContext}" x:DataType="vm:AutomationPageViewModel"
+                                IsVisible="{Binding HasToolPermission}" Padding="16" CornerRadius="8" BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1">
+                          <StackPanel Spacing="10">
+                            <TextBlock Classes="groupTitle" Text="Agent 请求使用工具" />
+                            <TextBlock Text="{Binding ToolPermission.Title}" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding ToolPermission.Detail, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True"
+                                     TextWrapping="Wrap" MaxHeight="240" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <Button Classes="contentButton buttonPrimary buttonSmall" Content="允许本次" Command="{Binding AllowToolCommand}" />
+                              <Button Classes="contentButton buttonSecondary buttonSmall" Content="拒绝" Command="{Binding DenyToolCommand}" />
+                            </StackPanel>
+                          </StackPanel>
+                        </Border>
+                        <TextBlock Classes="textMeta" Text="这次运行在开始前就结束了，没有执行任何步骤。" IsVisible="{Binding !HasSteps}" />
+                        <ItemsControl ItemsSource="{Binding Steps}" ItemTemplate="{StaticResource GraphStageTemplate}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><graphs:DependencyGraphPanel Classes="automationLane" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                        <Border x:Name="DeferredReviewPanel" IsVisible="{Binding HasReview}" Padding="16" CornerRadius="8" BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" Background="{DynamicResource BgSurfaceBrush}"
+                                MaxWidth="900" HorizontalAlignment="Stretch">
+                          <StackPanel Spacing="12">
+                            <TextBlock Classes="textBody" FontWeight="SemiBold" Text="人工审核" />
+                            <TextBlock Classes="textSecondary" Text="{Binding ReviewCaption}" TextWrapping="Wrap" />
+                            <TextBlock Classes="textSecondary" Text="{Binding Summary}" Foreground="{Binding StatusBrush}" TextWrapping="Wrap" />
+                            <TextBlock Classes="textMeta" Text="{Binding ReviewContinuationDetail}" IsVisible="{Binding HasReviewContinuationDetail}" TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding HasArtifact}">
+                              <TextBlock Classes="textSecondary" Text="报告及附件已保存到本次制品。" TextWrapping="Wrap" VerticalAlignment="Center" />
+                              <buttons:IconButton Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Text="查看制品"
+                                                  Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).ViewReviewArtifactsCommand}">
+                                <buttons:IconButton.Icon><fi:FluentIcon Icon="DocumentText" IconSize="Size16" /></buttons:IconButton.Icon>
+                              </buttons:IconButton>
+                            </Grid>
+                            <StackPanel Spacing="12">
+                              <Expander Header="{Binding ReviewConversationCaption}" IsVisible="{Binding HasReviewConversation}" HorizontalAlignment="Stretch">
+                                <ItemsControl ItemsSource="{Binding ReviewConversation}">
+                                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="12" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="auto:AutomationReviewMessage">
+                                      <StackPanel Spacing="4">
+                                        <TextBlock Classes="textMeta" Text="{Binding Caption}" />
+                                        <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                          <views:AutomationArtifactMarkdownView Markdown="{Binding Content}" />
+                                        </ScrollViewer>
+                                      </StackPanel>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                              </Expander>
+                              <Border BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="16">
+                                <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                  <views:AutomationArtifactMarkdownView Markdown="{Binding ReviewContent}" />
+                                </ScrollViewer>
+                              </Border>
+                            </StackPanel>
+                            <StackPanel Spacing="10" DataContext="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext)}" x:DataType="vm:AutomationPageViewModel">
+                              <StackPanel Spacing="10" IsVisible="{Binding CanReviewSelected}">
+                                <TextBox PlaceholderText="{Binding ReviewFeedbackPlaceholder}" Text="{Binding ReviewFeedback, Mode=TwoWay}"
+                                         IsVisible="{Binding CanReviseSelected}"
+                                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" MaxHeight="160" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                                <WrapPanel>
+                                  <Button Classes="contentButton buttonPrimary buttonSmall" Content="{Binding ReviewApproveLabel}" Command="{Binding ApproveDraftCommand}" Margin="0,0,8,8" />
+                                  <Button Classes="contentButton buttonSecondary buttonSmall" Content="{Binding ReviewReviseLabel}" IsVisible="{Binding CanReviseSelected}" Command="{Binding ReviseDraftCommand}" Margin="0,0,8,8" />
+                                  <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="转到 AI Chat"
+                                                      IsVisible="{Binding CanTransferToChat}" Command="{Binding TransferToChatCommand}"
+                                                      ToolTip.Tip="恢复原会话并结束本次自动运行，已填写的意见带入聊天但不自动发送" Margin="0,0,8,8">
+                                    <buttons:IconButton.Icon><fi:FluentIcon Icon="Chat" IconSize="Size16" /></buttons:IconButton.Icon>
+                                  </buttons:IconButton>
+                                  <Button Classes="contentButton buttonDanger buttonSmall" Content="终止本次" Command="{Binding AbandonDraftCommand}" Margin="0,0,0,8" />
+                                </WrapPanel>
+                                <TextBlock Classes="textSecondary" Text="{Binding ReviewHint}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <TextBlock Text="{Binding ReviewError}" IsVisible="{Binding HasReviewError}" Foreground="{DynamicResource TextDangerBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+                          </StackPanel>
+                        </Border>
+                      </StackPanel>
+                    </ScrollViewer>
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+
+                    <!-- 子图：在右侧图区域内展开，返回回到上一级 -->
+                    <ContentControl x:Name="SubgraphHost" Grid.Row="2" Content="{Binding SubgraphContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<Grid RowDefinitions="Auto,*">
+                      <Grid.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                          <Binding Path="HasSubgraph" />
+                          <Binding Path="ShowWorkflowView" />
+                        </MultiBinding>
+                      </Grid.IsVisible>
+                      <Border BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="20,10">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                          <Button Classes="contentButton buttonSecondary buttonSmall" Content="← 返回上一级" Command="{Binding BackFromSubgraphCommand}" />
+                          <TextBlock Classes="textBody" FontWeight="SemiBold" Text="{Binding SubgraphTitle}" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Border>
+                      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl Margin="20,16" ItemsSource="{Binding SubgraphSteps}" ItemTemplate="{StaticResource GraphStageTemplate}">
+                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><graphs:DependencyGraphPanel Classes="automationLane" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                      </ScrollViewer>
+                    </Grid>
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+                <ContentControl x:Name="ArtifactsHost" Grid.Row="2" Content="{Binding ArtifactContent}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:AutomationPageViewModel}" x:DataType="vm:AutomationPageViewModel">
+<views:AutomationArtifactsView DataContext="{Binding Artifacts}" />
+    </DataTemplate>
+  </ContentControl.DataTemplates>
+</ContentControl>
+
+              </Grid>
+            </Grid>
+          </Border>
+</Panel></DockPanel></Panel></Grid></Border>
+    <dialogs:ModalDialog x:Name="GlobalSettingsDialog" Title="全局设置"
+                         Description="保存到本机，供所有自动化任务统一使用。"
+                         Closed="GlobalSettingsDialog_Closed" />
+    <dialogs:ModalDialog Title="新建任务" IsOpen="{Binding IsTemplateMenuOpen, Mode=TwoWay}"
+                         DialogMaxWidth="680" DialogHeight="520" InitialFocus="{Binding #TemplateSearchBox}">
+      <dialogs:ModalDialog.Footer>
+          <Button Classes="contentButton buttonPrimary buttonMedium" Content="创建任务" HorizontalAlignment="Right"
+                  Command="{Binding NewTaskCommand}" CommandParameter="{Binding SelectedTemplate}" IsEnabled="{Binding HasVisibleTemplates}" />
+      </dialogs:ModalDialog.Footer>
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12" KeyDown="TemplatePicker_KeyDown" KeyboardNavigation.TabNavigation="Cycle">
+          <TextBox x:Name="TemplateSearchBox" Text="{Binding TemplateSearch, Mode=TwoWay}" PlaceholderText="搜索功能名称或说明"
+                   KeyDown="TemplatePicker_KeyDown" />
+          <Panel Grid.Row="1" MinHeight="64">
+            <TextBlock Classes="textSecondary" Text="没有匹配的功能" Margin="8" IsVisible="{Binding !HasVisibleTemplates}" />
+            <ListBox x:Name="TemplateList" ItemsSource="{Binding VisibleTemplates}" SelectedItem="{Binding SelectedTemplate, Mode=TwoWay}"
+                     Background="Transparent" BorderThickness="0" IsVisible="{Binding HasVisibleTemplates}"
+                     DoubleTapped="TemplateList_DoubleTapped" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                  <Setter Property="Padding" Value="8,6" />
+                  <Setter Property="Margin" Value="0,0,0,2" />
+                  <Setter Property="CornerRadius" Value="6" />
+                </Style>
+              </ListBox.Styles>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:AutomationTemplateOption">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <fi:FluentIcon Icon="{Binding Icon}" IconSize="Size20" Foreground="{DynamicResource TextLinkBrush}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Classes="textBody" FontWeight="{DynamicResource ContentItemFontWeight}" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                      <TextBlock Classes="textSecondary" Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Panel>
+          <ScrollViewer Grid.Row="2" MaxHeight="72" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                        IsVisible="{Binding HasVisibleTemplates}">
+            <TextBlock Classes="textSecondary" Text="{Binding SelectedTemplate.Description}" TextWrapping="Wrap" />
+          </ScrollViewer>
+        </Grid>
+    </dialogs:ModalDialog>
+    <dialogs:ModalDialog Title="脚本管理" Description="选择目录，找到流程，再新建任务配置参数与计划。"
+                         IsOpen="{Binding ShowScriptBrowser, Mode=TwoWay}" DialogMaxWidth="1100" DialogHeight="720"
+                         InitialFocus="{Binding #ScriptBrowser.InitialFocus}">
+      <views:AutomationScriptBrowserView x:Name="ScriptBrowser" />
+    </dialogs:ModalDialog>
+    <dialogs:ModalDialog Title="上传流程版本" Description="上传时自动核对云端版本与源文件，通过后提交待审。"
+                         IsOpen="{Binding ShowWorkflowUpload, Mode=TwoWay}" DialogMaxWidth="860" DialogHeight="640">
+      <ContentControl Content="{Binding WorkflowUpload.Content}" />
+    </dialogs:ModalDialog>
+  </Grid>
+  </DockPanel>
+</UserControl>

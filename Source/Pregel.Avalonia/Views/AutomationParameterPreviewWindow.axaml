@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Heron.Pregel.Avalonia.ViewModels"
+        x:Class="Heron.Pregel.Avalonia.Views.AutomationParameterPreviewWindow"
+        x:DataType="vm:AutomationEditorViewModel"
+        Title="全参数渲染列表"
+        Width="1100" Height="700" MinWidth="560" MinHeight="360"
+        CanResize="True" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgContentBrush}">
+  <Grid Margin="16" RowDefinitions="Auto,*" RowSpacing="12">
+    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <TextBlock Classes="textSectionTitle" Text="全参数渲染列表" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Classes="contentButton buttonQuiet buttonSmall" Content="复制全部" Click="CopyAll_Click" />
+      <Button Grid.Column="2" Classes="contentButton buttonSecondary buttonSmall" Content="关闭" Click="Close_Click" />
+    </Grid>
+    <TextBox Grid.Row="1" Text="{Binding ParameterPreview, Mode=OneWay}"
+             IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+             FontFamily="Cascadia Mono,Consolas,monospace" Padding="12"
+             VerticalContentAlignment="Top" HorizontalContentAlignment="Left"
+             ScrollViewer.VerticalScrollBarVisibility="Auto" />
+  </Grid>
+</Window>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.Pregel.Avalonia</PackageId>
+    <AssemblyName>Heron.Pregel.Avalonia</AssemblyName>
+    <RootNamespace>Heron.Pregel.Avalonia</RootNamespace>
+    <Description>Reusable Avalonia workspace for durable automation tasks, runs, parameters, logs and artifacts.</Description>
+    <IsPackable>true</IsPackable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AutomationTenants/Heron.AutomationTenants.csproj" />
+    <ProjectReference Include="../ClientFramework.Infrastructure/Heron.ClientFramework.Infrastructure.csproj" />
+    <ProjectReference Include="../Client.Controls/Heron.ClientControls.csproj" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="FluentIcons.Avalonia" />
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageReference Include="HotAvalonia" PrivateAssets="All" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" PrivateAssets="All" />
+  </ItemGroup>
+</Project>

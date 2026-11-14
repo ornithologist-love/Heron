@@ -246,3 +246,67 @@ func TestOnlyPublishedEntriesRegisterTasksAndTheLedgerIsReadOnly(t *testing.T) {
 		t.Fatal("reader modified the publication ledger")
 	}
 }
+
+// Anchor: Docs/automation-tenants-server.md#tenant-boundary
+func TestServiceListensOnlyOnLoopback(t *testing.T) {
+	for listen, allowed := range map[string]bool{
+		"127.0.0.1:5183": true, "[::1]:5183": true, "localhost:5183": true,
+		"0.0.0.0:5183": false, "[::]:5183": false, "192.0.2.10:5183": false, ":5183": false,
+	} {
+		c := mockService(t).config
+		c.Listen = listen
+		data, err := json.Marshal(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		filename := filepath.Join(t.TempDir(), "config.json")
+		if err := os.WriteFile(filename, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := loadConfig(filename); (err == nil) != allowed {
+			t.Fatalf("listen %q: allowed=%v err=%v", listen, allowed, err)
+		}
+	}
+}
+
+// Anchor: Docs/automation-tenants-server.md#durability
+func TestRecoveryDiscardsOnlyAnIncompleteJournalTail(t *testing.T) {
+	s := mockService(t)
+	id := seedRun(t, s, "orchard")
+	request := LogsRequest{MachineName: "orchard-box", Stream: "events", Lines: []string{`{"message":"plum"}`}}
+	first, err := s.appendLogs(id, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	journal := s.store.logFile("orchard", id)
+	committed, err := os.ReadFile(journal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reopen := func(tail string) error {
+		if err := s.store.lock.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(journal, append(append([]byte{}, committed...), tail...), 0600); err != nil {
+			t.Fatal(err)
+		}
+		reopened, err := openStore(s.config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.store = reopened
+		_, err = s.appendLogs(id, request)
+		return err
+	}
+
+	if err := reopen(`{"sequence":2,"str`); err != nil {
+		t.Fatalf("an incomplete final record must be discarded, got %v", err)
+	}
+	recovered, err := os.ReadFile(journal)
+	if err != nil || !bytes.Equal(recovered, committed) {
+		t.Fatalf("recovery kept a partial record or lost committed bytes (offset %d)", first.NextOffset)
+	}
+	if err := reopen("not a journal record\n"); err == nil {
+		t.Fatal("an invalid complete record must be an error, not silently skipped")
+	}
+}

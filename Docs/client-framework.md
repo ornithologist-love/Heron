@@ -43,7 +43,13 @@ The user is display only (`IShellUser`: name, account, organization, initials, p
 
 ## Host interface identity
 
-The host interface version is owned by the embedding product and read from its host policy. It is independent of NuGet package versions and assembly versions. A renamed contract requires rebuilding its consumers and incrementing the embedding host's interface version. An incompatible package is rejected before module activation; there are no former-product type aliases or binary forwarding assemblies.
+The host interface version is owned by the embedding product and read from its host policy. It is independent of NuGet package versions and assembly versions. It has a major and minor: a plugin declares the minimum host minor it needs, and a host accepts it only when the majors match and its own minor is at least that minimum. A legacy integer is interpreted as that major with minor zero. Malformed versions, different majors and a newer required minor are rejected before activation with the required and available versions.
+
+Additive optional capabilities, additional shared assemblies and interface members with default implementations belong to a minor upgrade. Removing or renaming public members or types, changing signatures, adding required abstract interface members, or changing contract semantics requires a new major. Package-version increments alone do not require recompiling plugins. Assembly identities remain stable; changing a namespace or assembly identity is itself a breaking change.
+
+New edition locks write the canonical major.minor form. Existing integer locks remain readable without migration. Assembly-cache inputs include the normalized host API and the resolver implementation, so a host minor upgrade cannot reuse an edition assembled for an older host. Plugin enablement and installed version state are retained.
+
+Abstractions and ClientControls are validated against checked-in released packages during packing. The reference launcher's host policy supplies the publishing host API; embedding products remain responsible for declaring the same breaking-contract major before adopting an incompatible framework release. API compatibility suppressions are forbidden within the baseline major. An intentional break needs a new host major and individually reviewed suppressions, followed by a new released baseline; changing a major does not silently turn validation off. Binary and source-surface checks cannot detect arbitrary semantic changes, which still require contract review. The delivery workflow is described in [package workflow](package-workflow.md).
 
 ## Shared assembly compatibility
 

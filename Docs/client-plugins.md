@@ -93,7 +93,7 @@ dotnet run --project Source/Client.Host -- --plugins <插件根目录> --smoke  
 dotnet run --project Source/Client.Host -- --edition my-edition.json
 ```
 
-版型点名但找不到包的插件，启动直接失败，不会退回旧产物。工作区的 `ClientEditions/heron-host.json` 就是这样把 Gallery、任务管理器和 DownKyi 组在一起的。产品宿主用同一套装配：在它的版型里加一项，插件就以页面形式出现；删掉这一项就拔掉，宿主代码不动。
+版型点名但找不到包的插件，启动直接失败，不会退回旧产物。工作区的 `ClientEditions/heron-host.json` 就是这样把 Gallery 和任务管理器组在一起的。产品宿主用同一套装配：在它的版型里加一项，插件就以页面形式出现；删掉这一项就拔掉，宿主代码不动。
 
 ## 验证
 

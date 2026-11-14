@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../ClientFramework.Compatibility/Baseline.props" />
   <PropertyGroup>
     <RootNamespace>Heron.ClientControls</RootNamespace>
     <AssemblyName>Heron.ClientControls</AssemblyName>

@@ -1,0 +1,126 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Heron.Pregel.Avalonia.ViewModels" xmlns:auto="using:Heron.Pregel.Automation"
+             xmlns:fi="using:FluentIcons.Avalonia" xmlns:buttons="using:Heron.ClientControls.Buttons"
+             x:Class="Heron.Pregel.Avalonia.Views.AutomationScriptBrowserView" x:DataType="vm:AutomationPageViewModel">
+  <Border>
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+      <Border Background="{DynamicResource SubPanelBgBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+        <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <TextBlock Classes="textFieldLabel" Text="脚本源 / 本地目录" VerticalAlignment="Center" />
+            <buttons:IconButton Grid.Column="1" Classes="contentButton buttonSecondary buttonMedium" Text="注册脚本目录"
+                                Click="OpenScriptDirectory_Click" IsEnabled="{Binding !IsScriptBusy}"
+                                ToolTip.Tip="选择并登记包含 CSX 的目录，扫描其中的任务入口">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Add" IconSize="Size16" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </Grid>
+          <ComboBox Grid.Row="1" Classes="dropdownStretch" ItemsSource="{Binding ScriptDirectories}"
+                    SelectedItem="{Binding SelectedScriptDirectory, Mode=TwoWay}" IsEnabled="{Binding !IsScriptBusy}"
+                    HorizontalAlignment="Stretch" ToolTip.Tip="{Binding SelectedScriptDirectory}" />
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <TextBlock Classes="textMeta" Text="{Binding ScriptDirectoryHint}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+              <Button Classes="contentButton buttonQuiet buttonSmall" Content="检查更新 / 重新扫描" Command="{Binding RefreshScriptsCommand}"
+                      IsEnabled="{Binding !IsScriptBusy}" />
+              <Button Classes="contentButton buttonQuiet buttonSmall" Content="移除目录" Command="{Binding RemoveScriptDirectoryCommand}"
+                      IsEnabled="{Binding CanRemoveScriptDirectory}" ToolTip.Tip="仅移除目录登记；默认目录或仍有已加载脚本时不可移除" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+      <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <TextBox x:Name="ScriptSearchBox" Text="{Binding ScriptSearchText, Mode=TwoWay}" PlaceholderText="搜索脚本名称、描述或路径" />
+        <TextBlock Grid.Column="1" Classes="textMeta" Text="{Binding ScriptSummary}" VerticalAlignment="Center" />
+      </Grid>
+      <StackPanel Grid.Row="2" Spacing="8">
+        <ProgressBar IsIndeterminate="True" Height="4" IsVisible="{Binding IsScriptBusy}" />
+        <TextBox Text="{Binding ScriptMessage, Mode=OneWay}" IsVisible="{Binding HasScriptMessage}" IsReadOnly="True"
+                 AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120" Foreground="{DynamicResource TextDangerBrush}" />
+      </StackPanel>
+      <Panel Grid.Row="3">
+        <StackPanel IsVisible="{Binding !HasVisibleScriptEntries}" Spacing="6" Margin="12,24">
+          <TextBlock Classes="textBody" Text="暂无匹配的脚本" FontWeight="SemiBold" />
+          <TextBlock Classes="textSecondary" Text="清空搜索，或点击上方「注册脚本目录」添加包含 CSX 的工作目录。" TextWrapping="Wrap" />
+        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasVisibleScriptEntries}">
+          <ItemsControl ItemsSource="{Binding VisibleScriptEntries}" IsEnabled="{Binding !IsScriptBusy}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="auto:AutomationScriptEntry">
+                <Border Classes="scriptEntry" Classes.loaded="{Binding IsLoaded}" Classes.error="{Binding HasError}"
+                        CornerRadius="8" Padding="14,12">
+                  <Border.Styles>
+                    <Style Selector="Border.scriptEntry">
+                      <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+                      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+                      <Setter Property="BorderThickness" Value="1" />
+                    </Style>
+                    <Style Selector="Border.scriptEntry.loaded">
+                      <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}" />
+                      <Setter Property="BorderThickness" Value="3,1,1,1" />
+                    </Style>
+                    <Style Selector="Border.scriptEntry.error">
+                      <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+                      <Setter Property="BorderThickness" Value="3,1,1,1" />
+                    </Style>
+                    <Style Selector="Border.statusBadge">
+                      <Setter Property="Background" Value="{DynamicResource BgSurfaceSubtleBrush}" />
+                      <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+                    </Style>
+                    <Style Selector="Border.statusBadge.loaded">
+                      <Setter Property="Background" Value="{DynamicResource SuccessBgBrush}" />
+                      <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}" />
+                    </Style>
+                    <Style Selector="Border.statusBadge.loaded > TextBlock">
+                      <Setter Property="Foreground" Value="{DynamicResource TextSuccessBrush}" />
+                    </Style>
+                    <Style Selector="Border.statusBadge.error">
+                      <Setter Property="Background" Value="{DynamicResource DangerBgBrush}" />
+                      <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+                    </Style>
+                    <Style Selector="Border.statusBadge.error > TextBlock">
+                      <Setter Property="Foreground" Value="{DynamicResource TextDangerBrush}" />
+                    </Style>
+                    <Style Selector="Border.statusBadge.update">
+                      <Setter Property="Background" Value="{DynamicResource WarningBgBrush}" />
+                      <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+                    </Style>
+                  </Border.Styles>
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <StackPanel Spacing="4">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <TextBlock Classes="textBody" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" Text="{Binding Title}" TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding Title}" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Classes="statusBadge" Classes.loaded="{Binding IsLoaded}" Classes.error="{Binding HasError}" Classes.update="{Binding HasUpdate}"
+                                BorderThickness="1" CornerRadius="4" Padding="6,1">
+                          <TextBlock Classes="textMeta" Text="{Binding Status}" />
+                        </Border>
+                      </Grid>
+                      <TextBlock Classes="textSecondary" Foreground="{DynamicResource TextDefaultBrush}" Text="{Binding Description}" IsVisible="{Binding HasDescription}"
+                                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Description}" />
+                      <TextBlock Classes="textMeta" Foreground="{DynamicResource TextDefaultBrush}" Text="{Binding RelativePath}" ToolTip.Tip="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="textMeta" Text="{Binding SourceInfo}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="textSecondary" Text="{Binding Error}" IsVisible="{Binding HasError}"
+                                 Foreground="{DynamicResource TextDangerBrush}" TextWrapping="Wrap" MaxHeight="48"
+                                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Error}" />
+                    </StackPanel>
+                    <WrapPanel Grid.Column="1" MaxWidth="280" VerticalAlignment="Center">
+                      <Button Classes="contentButton buttonPrimary buttonSmall" Content="新建任务" CommandParameter="{Binding}" Margin="0,2,6,2"
+                              Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).CreateScriptTaskCommand}" />
+                      <Button Classes="contentButton buttonSecondary buttonSmall" Content="{Binding DownloadText}" IsVisible="{Binding IsRemote}" CommandParameter="{Binding}" Margin="0,2,6,2"
+                              Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).LoadScriptCommand}" />
+                      <Button Classes="contentButton buttonSecondary buttonSmall" Content="重新加载" IsVisible="{Binding ShowLocalReload}" CommandParameter="{Binding}" Margin="0,2,6,2"
+                              Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).LoadScriptCommand}" />
+                      <Button Classes="contentButton buttonQuiet buttonSmall" Content="卸载脚本" IsVisible="{Binding IsLoaded}" CommandParameter="{Binding}" Margin="0,2,0,2"
+                              Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).UnloadScriptCommand}" ToolTip.Tip="卸载已加载脚本，保留源文件与任务" />
+                    </WrapPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Panel>
+    </Grid>
+  </Border>
+</UserControl>

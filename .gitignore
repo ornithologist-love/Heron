@@ -6,4 +6,5 @@
 /.idea/
 *.user
 *.nupkg
+!Source/ClientFramework.Compatibility/Baselines/*.nupkg
 *.snupkg

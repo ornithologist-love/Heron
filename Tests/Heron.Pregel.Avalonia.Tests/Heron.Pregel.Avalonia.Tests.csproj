@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Source/Pregel.Avalonia/Heron.Pregel.Avalonia.csproj" />
+    <Compile Include="../Support/Anchor.cs" Link="Support/Anchor.cs" />
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Semi.Avalonia" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

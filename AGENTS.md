@@ -5,6 +5,7 @@
 - Read [package workflow](Docs/package-workflow.md) before changing build or delivery.
 - 控件、主题与 Gallery 先读 [ClientControls](Docs/client-controls.md)；Gallery 使用 `dotnet run --project Source/Client.Controls.Gallery --configuration Debug`，输出到工作区 Binaries；消费方的标准开发入口继续有效。
 - Pregel 内核、脚本层、独立自动化和 CLI 先读 [Pregel](Docs/pregel.md) 与 [引擎设计](Docs/pregel-engine.md)；继续使用标准 Pack.ps1 构建，产物位于工作区 Binaries/Heron。
+- 自动化原生页面、宿主贡献面板与独立启动先读 [Pregel Avalonia](Docs/pregel-avalonia.md)；页面生命周期不拥有后台执行。
 - Reusable framework code belongs here. Do not reference consumer source trees, product hosts, private services or business plugins.
 - 写或装配客户端插件先读[客户端插件](Docs/client-plugins.md)；独立启动器 `dotnet run --project Source/Client.Host -- --plugins <dir> --smoke` 不依赖任何产品宿主。
 - ClientFramework 的插件模型、桌面契约与运行时先读 [ClientFramework](Docs/client-framework.md)；宿主接口版本、业务文案、窗口策略及原生文件过滤规则由消费方维护。

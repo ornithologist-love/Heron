@@ -16,6 +16,7 @@
     <ProjectReference Include="../PluginFixtures/Managed1/Managed1.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../PluginFixtures/Managed2/Managed2.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../PluginFixtures/CompatiblePrivate/CompatiblePrivate.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../PluginFixtures/BaselineContract/BaselineContract.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Headless" />
@@ -32,11 +33,14 @@
       <ProbeManaged1 Include="../PluginFixtures/Managed1/bin/$(Configuration)/net8.0/**/*" />
       <ProbeManaged2 Include="../PluginFixtures/Managed2/bin/$(Configuration)/net8.0/**/*" />
       <CompatiblePrivate Include="../PluginFixtures/CompatiblePrivate/bin/$(Configuration)/net8.0/Heron.ClientFramework.PluginProbe.Private.dll" />
+      <BaselineContract Include="../PluginFixtures/BaselineContract/bin/$(Configuration)/net8.0/**/*" />
     </ItemGroup>
     <Copy SourceFiles="@(ProbeManaged1)" DestinationFiles="@(ProbeManaged1->'$(OutDir)plugins/Managed1/%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="../PluginFixtures/Managed1/plugin.json" DestinationFolder="$(OutDir)plugins/Managed1" />
     <Copy SourceFiles="@(ProbeManaged2)" DestinationFiles="@(ProbeManaged2->'$(OutDir)plugins/Managed2/%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="../PluginFixtures/Managed2/plugin.json" DestinationFolder="$(OutDir)plugins/Managed2" />
     <Copy SourceFiles="@(CompatiblePrivate)" DestinationFolder="$(OutDir)plugins/CompatiblePrivate" />
+    <Copy SourceFiles="@(BaselineContract)" DestinationFiles="@(BaselineContract->'$(OutDir)plugins/BaselineContract/%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="../PluginFixtures/BaselineContract/plugin.json" DestinationFolder="$(OutDir)plugins/BaselineContract" />
   </Target>
 </Project>

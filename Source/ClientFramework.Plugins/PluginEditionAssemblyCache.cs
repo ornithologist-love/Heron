@@ -56,7 +56,7 @@ public static class PluginEditionAssemblyCache
     private static string InputDigest(PluginEdition edition, PluginPackage[] packages, string hostRoot, IPluginFileFilter? fileFilter, string hostApi)
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        AppendText(hash, "plugin-assembly-v3:" + hostApi + ":" + fileFilter?.Fingerprint);
+        AppendText(hash, "plugin-assembly-v4:" + PluginHostApiVersion.Parse(hostApi) + ":" + fileFilter?.Fingerprint);
         AppendText(hash, edition.ToJson());
         AppendFile(hash, "assembler", typeof(PluginEditionAssembler).Assembly.Location);
         AppendOptionalFile(hash, "host-api", Path.Combine(hostRoot, "host-api.json"));

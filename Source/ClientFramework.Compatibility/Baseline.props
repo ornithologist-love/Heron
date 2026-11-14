@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <HeronContractBaselineHostApiMajor>4</HeronContractBaselineHostApiMajor>
+    <HeronContractBaselinePackageVersion>0.2.14</HeronContractBaselinePackageVersion>
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>$(HeronContractBaselinePackageVersion)</PackageValidationBaselineVersion>
+    <ApiCompatEnableRuleCannotChangeParameterName>true</ApiCompatEnableRuleCannotChangeParameterName>
+  </PropertyGroup>
+</Project>

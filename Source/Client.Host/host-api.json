@@ -1,5 +1,5 @@
 {
-  "host_api": "4",
+  "host_api": "4.1",
   "shared_assemblies": [
     "Heron.ClientFramework.Abstractions",
     "Heron.ClientFramework.Runtime",

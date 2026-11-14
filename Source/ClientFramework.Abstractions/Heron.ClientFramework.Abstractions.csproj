@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../ClientFramework.Compatibility/Baseline.props" />
   <PropertyGroup>
     <PackageId>Heron.ClientFramework.Abstractions</PackageId>
     <AssemblyName>Heron.ClientFramework.Abstractions</AssemblyName>

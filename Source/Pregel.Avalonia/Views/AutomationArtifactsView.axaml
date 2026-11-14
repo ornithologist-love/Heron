@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Heron.Pregel.Avalonia.ViewModels"
+             xmlns:views="using:Heron.Pregel.Avalonia.Views"
+             x:Class="Heron.Pregel.Avalonia.Views.AutomationArtifactsView"
+             x:DataType="vm:AutomationArtifactsViewModel">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <!-- Use the editor's base templates with Semi's existing control theme. -->
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://AvaloniaEdit/Themes/Base.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <Grid RowDefinitions="Auto,Auto,*" Background="{DynamicResource BgSurfaceBrush}">
+    <Border Padding="20,12" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+      <Grid RowDefinitions="32,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="16" RowSpacing="6">
+        <Grid VerticalAlignment="Center">
+          <ComboBox ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile, Mode=TwoWay}"
+                    IsVisible="{Binding HasMultipleFiles}" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                    Height="32" MinHeight="32" HorizontalContentAlignment="Left">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:AutomationArtifactItem">
+                <TextBlock Classes="textBody" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Classes="textBody" FontWeight="SemiBold" Text="{Binding SelectedFile.Name}" IsVisible="{Binding !HasMultipleFiles}"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedFile.Path}" />
+        </Grid>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8" Height="32" VerticalAlignment="Center" Margin="0,0,8,0"
+                      IsVisible="{Binding ShowTextPreview}">
+            <TextBlock Classes="textFieldLabel" Text="行号" VerticalAlignment="Center" />
+            <ToggleSwitch IsChecked="{Binding ShowLineNumbers, Mode=TwoWay}" OnContent="" OffContent=""
+                          Height="32" MinHeight="0" VerticalAlignment="Center" ToolTip.Tip="显示或隐藏文本行号" />
+          </StackPanel>
+          <Button Classes="contentButton buttonLink buttonSmall" Content="{Binding MarkdownButtonText}"
+                  Command="{Binding ToggleMarkdownCommand}" IsVisible="{Binding IsMarkdown}"
+                  Margin="0,0,8,0" ToolTip.Tip="切换 Markdown 排版与原文" />
+          <Button Classes="contentButton buttonSecondary buttonSmall" Content="刷新" Command="{Binding ReloadCommand}" IsEnabled="{Binding !IsLoading}" />
+          <Button Classes="contentButton buttonSecondary buttonSmall" Content="打开目录" Command="{Binding OpenDirectoryCommand}" ToolTip.Tip="{Binding Directory}" IsEnabled="{Binding SelectedFile.IsLocal}" />
+          <Button Classes="contentButton buttonSecondary buttonSmall" Content="打开文件" Command="{Binding OpenFileCommand}"
+                  IsVisible="{Binding SelectedFile, Converter={x:Static ObjectConverters.IsNotNull}}" IsEnabled="{Binding SelectedFile.IsLocal}" />
+        </StackPanel>
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="8">
+          <SelectableTextBlock Classes="textMeta" Text="{Binding SelectedFile.Path, StringFormat='执行机文件：{0}'}" TextWrapping="Wrap"
+                               IsVisible="{Binding SelectedFile, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <SelectableTextBlock Classes="textMeta" Text="{Binding SelectedFile.Sha256, StringFormat='SHA-256：{0}'}" TextWrapping="Wrap"
+                               IsVisible="{Binding SelectedFile.Sha256, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <ItemsControl ItemsSource="{Binding SelectedFile.DeliveryRows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AutomationArtifactDeliveryRow">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="3" Margin="0,0,0,6">
+                  <TextBlock Classes="textBody" Text="{Binding Destination}" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="1" Classes="textMeta" Text="{Binding Status}" Margin="12,0,0,0" />
+                  <SelectableTextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="textMeta" Text="{Binding Location}"
+                                       TextWrapping="Wrap" IsVisible="{Binding HasLocation}" />
+                  <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="textSecondary" Text="{Binding Error}"
+                             TextWrapping="Wrap" IsVisible="{Binding HasError}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="12">
+          <TextBlock Classes="textMeta" Text="{Binding SelectedFile.Metadata}" />
+          <TextBlock Classes="textMeta" Text="{Binding FileCount}" IsVisible="{Binding HasMultipleFiles}" />
+          <TextBlock Classes="textMeta" Text="正在读取…" IsVisible="{Binding IsLoading}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+    <StackPanel Grid.Row="1" Margin="20,8" Spacing="4" IsVisible="{Binding HasPreviewStatus}">
+      <TextBlock Classes="textSecondary" Text="{Binding Message}" TextWrapping="Wrap"
+                 IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      <TextBlock Classes="textMeta" Text="正在加载预览…" IsVisible="{Binding IsPreviewLoading}" />
+      <TextBlock Classes="textSecondary" Text="{Binding PreviewNotice}" TextWrapping="Wrap"
+                 IsVisible="{Binding PreviewNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    </StackPanel>
+    <Grid Grid.Row="2">
+      <ScrollViewer IsVisible="{Binding ShowMarkdownPreview}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <views:AutomationArtifactMarkdownView Margin="28,16,28,32" IsVisible="{Binding ShowMarkdownPreview}" Markdown="{Binding PreviewText}" />
+      </ScrollViewer>
+      <!-- The editor owns scrolling; an outer ScrollViewer defeats line virtualization. -->
+      <views:AutomationArtifactCodeView Margin="20,16,20,24" IsVisible="{Binding ShowTextPreview}"
+                                        SourceText="{Binding PreviewText}" FileExtension="{Binding SelectedFile.Extension}"
+                                        ShowLineNumbers="{Binding ShowLineNumbers}" />
+      <ScrollViewer IsVisible="{Binding IsImage}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Image Margin="28,16,28,32" Source="{Binding PreviewImage}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Top" />
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

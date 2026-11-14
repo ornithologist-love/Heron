@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="../ClientFramework.Shell/Heron.ClientFramework.Shell.csproj" />
     <ProjectReference Include="../ClientFramework.Runtime/Heron.ClientFramework.Runtime.csproj" />
+    <ProjectReference Include="../Pregel.Avalonia/Heron.Pregel.Avalonia.csproj" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="Avalonia.Headless" />
