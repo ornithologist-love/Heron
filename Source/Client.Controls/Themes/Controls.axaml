@@ -1,0 +1,10 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:toast="using:Heron.ClientControls.Notifications">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Heron.ClientControls/Themes/ColorTokens.axaml" />
+    <ResourceInclude Source="avares://Heron.ClientControls/Themes/Toast.axaml" />
+    <ResourceInclude Source="avares://Heron.ClientControls/Themes/IconButton.axaml" />
+    <ResourceInclude Source="avares://Heron.ClientControls/Themes/ModalDialog.axaml" />
+  </ResourceDictionary.MergedDictionaries>
+</ResourceDictionary>

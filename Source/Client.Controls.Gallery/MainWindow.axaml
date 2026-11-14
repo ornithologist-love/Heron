@@ -1,0 +1,7 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:gallery="using:Heron.ClientControls.Gallery"
+        x:Class="Heron.ClientControls.Gallery.MainWindow" Title="Heron · 控件 Gallery"
+        Width="1180" Height="820" MinWidth="760" MinHeight="540"
+        Background="{DynamicResource BgContentBrush}">
+  <gallery:GalleryView />
+</Window>

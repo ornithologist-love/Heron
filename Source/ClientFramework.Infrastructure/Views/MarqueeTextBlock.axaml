@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Heron.ClientFramework.Infrastructure.MarqueeTextBlock"
+             x:Name="Root" x:DataType="views:MarqueeTextBlock"
+             xmlns:views="using:Heron.ClientFramework.Infrastructure"
+             ClipToBounds="True" HorizontalAlignment="Stretch">
+  <!--
+    Canvas is the one Avalonia panel whose MeasureOverride never reports its children's
+    DesiredSize upward: it always measures as (0,0) regardless of what's inside. That is
+    exactly what a marquee viewport needs — the Label's natural (unclipped, potentially very
+    wide) width must never propagate up and inflate the parent layout (StackPanel/Grid do
+    propagate child DesiredSize, which is what silently defeated a Border-based viewport: the
+    ancestor chain grew to fit the text, so Viewport.Bounds.Width always equaled the text
+    width and no overflow was ever measured). Because Canvas doesn't constrain via Measure,
+    ClipToBounds on this root UserControl performs the actual clipping once Arrange gives the
+    control its real, parent-constrained bounds.
+
+    Height is assigned from LabelFontSize in code-behind before layout rather than measured
+    from the Label at runtime — Canvas's own DesiredSize is always (0,0), so relying on a
+    runtime measurement of Label to size Canvas creates a chicken-and-egg dependency that is
+    zero-height on the very first layout pass.
+  -->
+  <Grid>
+    <TextBlock x:Name="StaticLabel" Text="{Binding Text, ElementName=Root}"
+               FontWeight="{Binding LabelFontWeight, ElementName=Root}"
+               FontSize="{Binding LabelFontSize, ElementName=Root}"
+               Foreground="{Binding LabelForeground, ElementName=Root}"
+               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+               VerticalAlignment="Center"/>
+    <Canvas x:Name="Viewport" ClipToBounds="True" Opacity="0" IsHitTestVisible="False">
+      <StackPanel x:Name="Track" Orientation="Horizontal" Spacing="28">
+        <TextBlock x:Name="Label" Text="{Binding Text, ElementName=Root}"
+                   FontWeight="{Binding LabelFontWeight, ElementName=Root}"
+                   FontSize="{Binding LabelFontSize, ElementName=Root}"
+                   Foreground="{Binding LabelForeground, ElementName=Root}"
+                   VerticalAlignment="Center"/>
+        <TextBlock x:Name="DuplicateLabel" Text="{Binding Text, ElementName=Root}"
+                   FontWeight="{Binding LabelFontWeight, ElementName=Root}"
+                   FontSize="{Binding LabelFontSize, ElementName=Root}"
+                   Foreground="{Binding LabelForeground, ElementName=Root}"
+                   VerticalAlignment="Center"/>
+      </StackPanel>
+    </Canvas>
+  </Grid>
+</UserControl>

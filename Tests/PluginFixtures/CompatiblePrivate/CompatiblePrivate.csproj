@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Heron.ClientFramework.PluginProbe.Private</AssemblyName>
+    <Version>1.1.0</Version><AssemblyVersion>1.1.0.0</AssemblyVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Private2/Info.cs" Link="Info.cs" />
+  </ItemGroup>
+</Project>

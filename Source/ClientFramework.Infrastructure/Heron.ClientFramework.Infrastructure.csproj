@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.ClientFramework.Infrastructure</PackageId>
+    <AssemblyName>Heron.ClientFramework.Infrastructure</AssemblyName>
+    <RootNamespace>Heron.ClientFramework.Infrastructure</RootNamespace>
+    <Description>Desktop client infrastructure: logging, diagnostics, WebView lifecycle, notifications and window presence.</Description>
+    <IsPackable>true</IsPackable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ClientFramework.Abstractions/Heron.ClientFramework.Abstractions.csproj" />
+    <ProjectReference Include="../Client.Controls/Heron.ClientControls.csproj" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Controls.WebView" />
+    <PackageReference Include="Microsoft.Web.WebView2" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />
+    <!-- Avalonia owns the native browser; use only Microsoft's Core interop, not WPF/WinForms hosts. -->
+    <Reference Include="Microsoft.Web.WebView2.Core" HintPath="$(PkgMicrosoft_Web_WebView2)/lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+</Project>

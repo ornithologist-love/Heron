@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:toast="using:Heron.ClientControls.Notifications"
+             x:Class="Heron.ClientControls.Gallery.Pages.ToastThemesPage">
+  <Grid RowDefinitions="Auto,*" Background="{DynamicResource BgContentBrush}">
+    <Grid Margin="16,12" ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="textSectionTitle" Text="Toast 明暗对照" />
+        <TextBlock Classes="textSecondary" Text="四种状态与长文本使用正式 Toast 控件；通知持续展示，长正文可滚动。" TextWrapping="Wrap" />
+      </StackPanel>
+      <Button Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall"
+              Content="重新展示" Click="ResetPreviews" VerticalAlignment="Center" Margin="12,0,0,0" />
+    </Grid>
+    <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12" Margin="16,0,16,16">
+      <ThemeVariantScope RequestedThemeVariant="Light">
+      <Border Background="{DynamicResource BgContentBrush}"
+              BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" CornerRadius="10" Padding="12">
+        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+          <TextBlock Classes="textSectionTitle" Text="暖玉 · 亮色" />
+          <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <toast:ToastHost x:Name="LightToasts" Margin="0" MaxToasts="5" Placement="TopLeft" />
+          </ScrollViewer>
+        </Grid>
+      </Border>
+      </ThemeVariantScope>
+      <ThemeVariantScope Grid.Column="1" RequestedThemeVariant="Dark">
+      <Border Background="{DynamicResource BgContentBrush}"
+              BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" CornerRadius="10" Padding="12">
+        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+          <TextBlock Classes="textSectionTitle" Text="墨玉 · 暗色" />
+          <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <toast:ToastHost x:Name="DarkToasts" Margin="0" MaxToasts="5" Placement="TopLeft" />
+          </ScrollViewer>
+        </Grid>
+      </Border>
+      </ThemeVariantScope>
+    </Grid>
+  </Grid>
+</UserControl>

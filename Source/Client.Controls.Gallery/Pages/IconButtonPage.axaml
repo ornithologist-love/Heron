@@ -1,0 +1,303 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:buttons="using:Heron.ClientControls.Buttons"
+             x:Class="Heron.ClientControls.Gallery.Pages.IconButtonPage">
+  <ScrollViewer>
+    <StackPanel Margin="24,20" Spacing="18" MaxWidth="780" HorizontalAlignment="Left">
+
+      <StackPanel Spacing="5">
+        <TextBlock FontSize="22" FontWeight="SemiBold" Text="IconButton 图标按钮" />
+        <TextBlock Foreground="#64748B" TextWrapping="Wrap"
+                   Text="图标 + 可选文字的组合按钮：文字支持四向排布（横排 / 竖排），圆角、背景、阴影、状态圆点均可配置。带文字时悬停只变色，按下轻微收缩；仅图标时悬停轻微放大，手感借鉴 SukiUI。" />
+      </StackPanel>
+
+      <!--  1. 语义变体  -->
+      <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontWeight="SemiBold" Text="语义变体 · 图标 + 文字" />
+          <WrapPanel>
+            <buttons:IconButton Margin="0,0,10,10" Text="刷新目录" ToolTip.Tip="刷新目录">
+              <buttons:IconButton.Icon>
+                <fi:FluentIcon Icon="ArrowClockwise" />
+              </buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="primary" Margin="0,0,10,10" Text="保存配置" ToolTip.Tip="保存配置">
+              <buttons:IconButton.Icon>
+                <fi:FluentIcon Icon="Save" />
+              </buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="success" Margin="0,0,10,10" Text="立即拉取" ToolTip.Tip="立即拉取">
+              <buttons:IconButton.Icon>
+                <fi:FluentIcon Icon="ArrowDownload" />
+              </buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="danger" Margin="0,0,10,10" Text="停止构建" ToolTip.Tip="停止构建">
+              <buttons:IconButton.Icon>
+                <fi:FluentIcon Icon="Delete" />
+              </buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="quiet" Margin="0,0,10,10" Text="清屏" ToolTip.Tip="清屏">
+              <buttons:IconButton.Icon>
+                <fi:FluentIcon Icon="Dismiss" />
+              </buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="flat" Margin="0,0,10,10" Text="复制路径" ToolTip.Tip="复制路径">
+              <buttons:IconButton.Icon>
+                <fi:FluentIcon Icon="Copy" />
+              </buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <!--  2. 仅图标  -->
+      <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontWeight="SemiBold" Text="仅图标（悬停放大，必须带 Tooltip）" />
+          <WrapPanel>
+            <buttons:IconButton Classes="flat" Margin="0,0,10,10" ToolTip.Tip="搜索">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Search" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="quiet" Margin="0,0,10,10" ToolTip.Tip="复制">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Copy" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Margin="0,0,10,10" ToolTip.Tip="刷新">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowClockwise" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="primary" Margin="0,0,10,10" ToolTip.Tip="下载">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowDownload" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="success" Margin="0,0,10,10" ToolTip.Tip="已完成">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="CheckmarkCircle" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="danger" Margin="0,0,10,10" ToolTip.Tip="删除">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Delete" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="small flat" Margin="0,0,10,10" ToolTip.Tip="通知（28px）">
+<buttons:IconButton.Icon><fi:FluentIcon Icon="Alert" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="large flat" IconSize="20" Margin="0,0,10,10" ToolTip.Tip="设置（40px）">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Settings" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <!--  3. 文字位置与排列  -->
+      <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontWeight="SemiBold" Text="文字位置 · 横排 / 竖排" />
+          <WrapPanel>
+            <StackPanel Margin="0,0,12,4" Spacing="6">
+              <buttons:IconButton Text="拉取" ToolTip.Tip="文字在右（默认）">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowDownload" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <TextBlock FontSize="12" Foreground="#64748B" Text="Right · 横排（默认）" />
+            </StackPanel>
+            <StackPanel Margin="0,0,12,4" Spacing="6">
+              <buttons:IconButton TextPlacement="Left" Text="拉取" ToolTip.Tip="文字在左">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowDownload" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <TextBlock FontSize="12" Foreground="#64748B" Text="Left · 横排" />
+            </StackPanel>
+            <StackPanel Margin="0,0,12,4" Spacing="6">
+              <buttons:IconButton TextPlacement="Top" Text="拉取" ToolTip.Tip="文字在上">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowDownload" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <TextBlock FontSize="12" Foreground="#64748B" Text="Top · 竖排" />
+            </StackPanel>
+            <StackPanel Margin="0,0,12,4" Spacing="6">
+              <buttons:IconButton TextPlacement="Bottom" Text="拉取" ToolTip.Tip="文字在下">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowDownload" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <TextBlock FontSize="12" Foreground="#64748B" Text="Bottom · 竖排" />
+            </StackPanel>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <!--  4. 圆角与形状  -->
+      <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontWeight="SemiBold" Text="圆角与形状" />
+          <WrapPanel>
+            <buttons:IconButton CornerRadius="4" Margin="0,0,10,10" Text="R4" ToolTip.Tip="圆角 4">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Star" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton CornerRadius="8" Margin="0,0,10,10" Text="R8（默认）" ToolTip.Tip="圆角 8（默认）">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Star" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton CornerRadius="12" Margin="0,0,10,10" Text="R12" ToolTip.Tip="圆角 12">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Star" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton CornerRadius="16" Margin="0,0,10,10" Text="胶囊" ToolTip.Tip="胶囊形态">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Star" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="circle" Margin="0,0,10,10" ToolTip.Tip="圆形图标按钮">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="circle large" IconSize="20" Margin="0,0,10,10" ToolTip.Tip="圆形大按钮">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Settings" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <!--  5. 背景与阴影 / 状态信号灯  -->
+      <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontWeight="SemiBold" Text="背景与阴影" />
+          <WrapPanel>
+            <buttons:IconButton Margin="0,0,10,10"
+                                Shadow="0 6 16 0 #220F172A" Text="浮起" ToolTip.Tip="普通投影">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Star" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="primary" Margin="0,0,10,10"
+                                Shadow="0 6 16 0 #291769E0" Text="主色投影" ToolTip.Tip="主色投影">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Save" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="success circle" Margin="0,0,10,10"
+                                Shadow="0 0 14 2 #5516A34A" ToolTip.Tip="发光圆钮">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </WrapPanel>
+
+          <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="首次引导（光晕呼吸三次后停止）" />
+          <buttons:IconButton Text="AI 助手" ShowIntroGlow="True" IconSize="14" Spacing="5"
+                              Height="24" Padding="8,0" CornerRadius="12" FontSize="12"
+                              Background="#DBEAFE" BorderBrush="#AFCBF0" Foreground="#145BC1"
+                              HorizontalAlignment="Left" Margin="0,6"
+                              ToolTip.Tip="首次轻微呼吸三次，随后静止；点击后可体验功能模板">
+            <buttons:IconButton.Icon><fi:FluentIcon Icon="Chat" /></buttons:IconButton.Icon>
+          </buttons:IconButton>
+          <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="纯色灯珠（运行/排队呼吸闪烁，异常/离线常亮）" />
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <buttons:IconButton Classes="circle pulse" Width="14" Height="14" Background="#16A34A"
+                                BorderThickness="0" Shadow="0 0 10 2 #6616A34A" ToolTip.Tip="运行中" />
+            <buttons:IconButton Classes="circle pulse" Width="14" Height="14" Background="#F59E0B"
+                                BorderThickness="0" Shadow="0 0 10 2 #66F59E0B" ToolTip.Tip="任务排队中" />
+            <buttons:IconButton Classes="circle" Width="14" Height="14" Background="#DC2626"
+                                BorderThickness="0" Shadow="0 0 10 2 #66DC2626" ToolTip.Tip="异常" />
+            <buttons:IconButton Classes="circle" Width="14" Height="14" Background="#94A3B8"
+                                BorderThickness="0" ToolTip.Tip="离线" />
+          </StackPanel>
+
+          <TextBlock FontWeight="SemiBold" Margin="0,4,0,0" Text="徽标位置 · Icon 右上角（默认 8px）" />
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <buttons:IconButton Classes="flat circle" ShowDot="True" DotBrush="#DC2626"
+                                DotPlacement="IconTopRight" ToolTip.Tip="Icon 右上角">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Alert" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="primary circle" ShowDot="True" DotBrush="#FDE047"
+                                DotPlacement="IconTopRight" ToolTip.Tip="Icon 右上角">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Settings" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="success" ShowDot="True" DotBrush="#DC2626" Text="图标徽标"
+                                DotPlacement="IconTopRight" ToolTip.Tip="Icon 右上角">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </StackPanel>
+
+          <TextBlock FontWeight="SemiBold" Margin="0,4,0,0" Text="徽标位置 · 按钮 Border 右上角（12px、高层级、不裁剪）" />
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <buttons:IconButton Classes="flat circle" ShowDot="True" DotBrush="#DC2626"
+                                DotPlacement="BorderTopRight" DotSize="12" ToolTip.Tip="Border 右上角">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Alert" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="primary circle" ShowDot="True" DotBrush="#FDE047"
+                                DotPlacement="BorderTopRight" DotSize="12" ToolTip.Tip="Border 右上角">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Settings" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="success" ShowDot="True" DotBrush="#DC2626" Text="Border 徽标"
+                                DotPlacement="BorderTopRight" DotSize="12" ToolTip.Tip="Border 右上角">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton ShowDot="True" DotBrush="#DC2626" Text="带文字样式"
+                                DotPlacement="BorderTopRight" DotSize="12" ToolTip.Tip="Border 右上角">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Alert" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!--  6. 功能设置按钮场景  -->
+      <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontWeight="SemiBold" Text="场景 · 工具栏" />
+          <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1"
+                  CornerRadius="8" Padding="8,4" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <buttons:IconButton Classes="flat" ToolTip.Tip="搜索">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="Search" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <buttons:IconButton Classes="flat" ToolTip.Tip="刷新">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowClockwise" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <buttons:IconButton Classes="flat" ToolTip.Tip="复制">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="Copy" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <Border Width="1" Height="20" Margin="4,0" Background="#E2E8F0" />
+              <buttons:IconButton Classes="flat" ShowDot="True" DotBrush="#DC2626" ToolTip.Tip="通知（2 条未读）">
+<buttons:IconButton.Icon><fi:FluentIcon Icon="Alert" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <buttons:IconButton Classes="flat" ToolTip.Tip="设置">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="Settings" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <Border Width="1" Height="20" Margin="4,0" Background="#E2E8F0" />
+              <buttons:IconButton Classes="flat danger" ToolTip.Tip="删除">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="Delete" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+            </StackPanel>
+          </Border>
+
+          <TextBlock FontWeight="SemiBold" Margin="0,8,0,0" Text="场景 · 功能入口（文字在下）" />
+          <WrapPanel>
+            <buttons:IconButton Classes="quiet" TextPlacement="Bottom" Width="88" IconSize="20"
+                                Margin="0,0,12,12" ToolTip.Tip="构建产物">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="BoxMultiple" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="quiet" TextPlacement="Bottom" Width="88" IconSize="20"
+                                Margin="0,0,12,12" ToolTip.Tip="设备调试">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Phone" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="quiet" TextPlacement="Bottom" Width="88" IconSize="20"
+                                Margin="0,0,12,12" ToolTip.Tip="包体下载">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowDownload" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="quiet" TextPlacement="Bottom" Width="88" IconSize="20"
+                                Margin="0,0,12,12" ToolTip.Tip="环境设置">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Settings" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <!--  7. 交互状态  -->
+      <Border Background="White" BorderBrush="#D7E0EA" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontWeight="SemiBold" Text="交互状态" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <buttons:IconButton IsEnabled="False" Text="禁用" ToolTip.Tip="禁用">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Star" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="primary" IsEnabled="False" Text="禁用主操作" ToolTip.Tip="禁用主操作">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Save" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <buttons:IconButton Classes="flat" IsEnabled="False" ToolTip.Tip="禁用图标按钮">
+<buttons:IconButton.Icon><fi:FluentIcon Icon="Alert" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <Border Width="1" Height="24" Background="#E2E8F0" Margin="6,0" />
+            <buttons:IconButton Classes="success" Click="OnCounterClick" Text="点我试试" ToolTip.Tip="点击计数">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <TextBlock x:Name="CounterText" VerticalAlignment="Center" Foreground="#64748B" Text="已点击 0 次" />
+          </StackPanel>
+          <TextBlock Foreground="#64748B" TextWrapping="Wrap"
+                     Text="键盘 Tab 聚焦时按钮出现蓝色描边；悬停背景加深一级；按下整体轻微收缩，仅图标按钮悬停时轻微放大。" />
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

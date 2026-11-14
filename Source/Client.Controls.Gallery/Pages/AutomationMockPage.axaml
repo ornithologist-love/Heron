@@ -1,0 +1,508 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:buttons="using:Heron.ClientControls.Buttons"
+             xmlns:graphs="using:Heron.ClientControls.Graphs"
+
+
+             xmlns:pages="using:Heron.ClientControls.Gallery.Pages"
+             x:Class="Heron.ClientControls.Gallery.Pages.AutomationMockPage"
+             x:DataType="pages:AutomationLayoutMock"
+             Background="{DynamicResource BgContentBrush}">
+  <UserControl.DataTemplates>
+    <!-- 步骤节点：固定 52px 高，宽度由所在面板统一 -->
+    <DataTemplate DataType="pages:MockGraphNode">
+      <Panel>
+        <Border Classes="graphStep" IsVisible="{Binding !IsStage}"
+                Classes.plan="{Binding IsPlan}" Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}"
+                Classes.review="{Binding IsReview}"
+                Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}"
+                Classes.skipped="{Binding IsSkipped}" Classes.cancelled="{Binding IsCancelled}"
+                ToolTip.Tip="{Binding ToolTipText}">
+          <Panel>
+            <Grid Margin="12,0,8,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+              <fi:FluentIcon Classes="stateIcon" Icon="{Binding StateIcon}" IconSize="Size16"
+                             Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}"
+                             Classes.review="{Binding IsReview}"
+                             Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}"
+                             Classes.cancelled="{Binding IsCancelled}" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Classes="stepTitle" Text="{Binding Title}" />
+                <TextBlock Classes="stepMeta" Text="{Binding MetaLine}" IsVisible="{Binding HasMeta}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding HasActions}">
+                <Button Classes="graphAction review" IsVisible="{Binding CanReview}"
+                        ToolTip.Tip="打开审核" AutomationProperties.Name="打开审核">
+                  <TextBlock Text="审核" VerticalAlignment="Center" />
+                </Button>
+                <Button Click="OnMockAction" Tag="日志和子图入口仅作 Mock 示意，不读取真实运行数据。" Classes="graphAction iconOnly" IsVisible="{Binding HasSubgraph}"
+                        ToolTip.Tip="查看子图" AutomationProperties.Name="查看子图">
+                  <fi:FluentIcon Icon="Flowchart" IconSize="Size16" />
+                </Button>
+                <Button Click="OnMockAction" Tag="日志和子图入口仅作 Mock 示意，不读取真实运行数据。" Classes="graphAction iconOnly" IsVisible="{Binding HasLog}"
+                        ToolTip.Tip="查看节点日志" AutomationProperties.Name="查看节点日志">
+                  <fi:FluentIcon Icon="DocumentText" IconSize="Size16" />
+                </Button>
+              </StackPanel>
+            </Grid>
+            <ProgressBar Classes="stepProgress" Minimum="0" Maximum="100" Value="{Binding Progress}"
+                         IsVisible="{Binding ShowProgress}" />
+          </Panel>
+        </Border>
+
+        <!-- Stage：标题行固定 40px（连线锚点 = 20），内容区只放步骤 -->
+        <Border Classes="graphStage" IsVisible="{Binding IsStage}"
+                Classes.running="{Binding IsRunning}" Classes.failed="{Binding IsFailed}" Classes.review="{Binding IsReview}">
+          <StackPanel>
+            <graphs:WidthNeutralDecorator Height="40">
+              <Grid Margin="12,0,8,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                <fi:FluentIcon Classes="stateIcon" Icon="{Binding StateIcon}" IconSize="Size16"
+                               Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}"
+                               Classes.review="{Binding IsReview}"
+                               Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}"
+                               Classes.cancelled="{Binding IsCancelled}" />
+                <TextBlock Grid.Column="1" Classes="stageTitle" Text="{Binding Title}" ToolTip.Tip="{Binding Title}"
+                           Classes.skipped="{Binding IsSkipped}" Classes.cancelled="{Binding IsCancelled}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Classes="stageState" Text="{Binding StateText}"
+                             Classes.running="{Binding IsRunning}" Classes.failed="{Binding IsFailed}" Classes.review="{Binding IsReview}" />
+                  <Button Click="OnMockAction" Tag="日志和子图入口仅作 Mock 示意，不读取真实运行数据。" Classes="graphAction iconOnly" IsVisible="{Binding HasLog}"
+                          ToolTip.Tip="查看阶段日志" AutomationProperties.Name="查看阶段日志">
+                    <fi:FluentIcon Icon="DocumentText" IconSize="Size16" />
+                  </Button>
+                </StackPanel>
+              </Grid>
+            </graphs:WidthNeutralDecorator>
+            <!-- 说明行：进入条件、并行路数。只在需要时出现，不影响标题行连线锚点 -->
+            <graphs:WidthNeutralDecorator IsVisible="{Binding HasStageNote}">
+              <StackPanel Margin="12,0,12,8" Orientation="Horizontal" Spacing="6">
+                <Border Classes="graphChip" IsVisible="{Binding IsParallel}">
+                  <TextBlock Text="{Binding ParallelCaption}" />
+                </Border>
+                <TextBlock Classes="stepMeta" VerticalAlignment="Center" Text="{Binding Condition}" IsVisible="{Binding HasCondition}" />
+              </StackPanel>
+            </graphs:WidthNeutralDecorator>
+            <ItemsControl Margin="8,0,8,8" ItemsSource="{Binding Children}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <graphs:DependencyGraphPanel Classes="automationStage" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Panel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <UserControl.Styles>
+    <StyleInclude Source="avares://Heron.ClientControls/Themes/AutomationWorkspace.axaml" />
+  </UserControl.Styles>
+
+  <DockPanel>
+    <!-- Gallery 控制条（不属于设计稿） -->
+    <Border DockPanel.Dock="Top" Padding="24,14" BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource FgPrimaryBrush}" Text="自动化页布局 · 可交互 mock" />
+          <TextBlock Classes="ctlLabel" Text="整页一张面板 · 参数导航 · 共享流程样式 · 报告默认收起" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="20">
+          <CheckBox Content="紧凑密度" IsChecked="{Binding IsCompact}" />
+          <CheckBox Content="展开报告 / 日志" IsChecked="{Binding IsDrawerOpen}" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="ctlLabel" Text="页面宽度" />
+            <ComboBox Width="170" ItemsSource="{Binding WidthOptions}" SelectedIndex="{Binding WidthIndex}" />
+          </StackPanel>
+        </StackPanel>
+        <Border IsVisible="{Binding HasFeedback}" Background="{DynamicResource BgSurfaceSubtleBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Classes="ctlLabel" Text="{Binding Feedback}" TextWrapping="Wrap" />
+            <Button Grid.Column="1" Classes="contentButton buttonQuiet buttonSmall" Content="关闭" Click="OnClearFeedback" />
+          </Grid>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+      <ThemeVariantScope HorizontalAlignment="Left" Margin="24,20">
+        <!-- 模拟应用内容区：BgApp 底 + 一张页面面板，高度对齐 1314×874 窗口里的可用区域 -->
+        <Border Background="{DynamicResource BgAppBrush}" Padding="12" CornerRadius="14"
+                Width="{Binding PreviewWidth}" Height="640"
+                Classes.compact="{Binding IsCompact}">
+          <Border Classes="mockShell">
+            <Grid ColumnDefinitions="272,Auto,*">
+
+              <!-- ================= 左列：任务列表 ================= -->
+              <Border Classes="sidePane">
+                <DockPanel Margin="12,14,12,12">
+                  <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="4,0,0,12">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                      <fi:FluentIcon Icon="CalendarClock" IconSize="Size20" Foreground="{DynamicResource InfoIconBrush}" />
+                      <TextBlock Classes="textSectionTitle" Text="自动化任务" />
+                    </StackPanel>
+                    <buttons:IconButton Grid.Column="1" Classes="contentButton buttonPrimary buttonMedium" Text="新建"
+                                        Click="OnMockAction" Tag="新建任务仅作交互示意；此预览不会创建或保存任务。">
+                      <buttons:IconButton.Icon><fi:FluentIcon Icon="Add" IconSize="Size16" /></buttons:IconButton.Icon>
+                    </buttons:IconButton>
+                  </Grid>
+                  <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+                    <Button Classes="contentButton buttonSecondary buttonSmall" Content="全局设置" Click="OnMockAction"
+                            Tag="全局设置仅作布局示意；此预览不会读取或写入配置。" />
+                    <Button Classes="contentButton buttonSecondary buttonSmall" Content="脚本管理" Click="OnMockAction"
+                            Tag="脚本管理仅作布局示意；此预览不会加载、更新或发布脚本。" />
+                  </StackPanel>
+                  <TextBox DockPanel.Dock="Top" Text="{Binding Search}" PlaceholderText="搜索任务或流程" Margin="0,0,0,10">
+                    <TextBox.InnerLeftContent>
+                      <fi:FluentIcon Classes="metaIcon" Icon="Search" Margin="10,0,2,0" />
+                    </TextBox.InnerLeftContent>
+                  </TextBox>
+                  <ListBox DockPanel.Dock="Top" Classes="chips" ItemsSource="{Binding Filters}" SelectedItem="{Binding SelectedFilter}"
+                           Margin="0,0,0,8" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="pages:LayoutFilter">
+                        <TextBlock Text="{Binding Text}" />
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+
+                  <Grid>
+                    <ListBox Classes="flat" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask}"
+                             IsVisible="{Binding HasTasks}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="pages:LayoutTask">
+                          <Panel ToolTip.Tip="{Binding Description}">
+                            <Border Classes="selBar" IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                            <Grid Classes="taskRow" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="9">
+                              <fi:FluentIcon Classes="rowIcon" Icon="{Binding Icon}" />
+                              <TextBlock Grid.Column="1" Classes="rowName" Text="{Binding Name}" />
+                              <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Time}" />
+                              <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10" ClipToBounds="True">
+                                <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasStatus}">
+                                  <Ellipse Classes="dot" Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}"
+                                           Classes.running="{Binding IsRunning}" Classes.cancelled="{Binding IsCancelled}" />
+                                  <TextBlock Classes="st" Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}"
+                                             Classes.running="{Binding IsRunning}" Text="{Binding RowStatus}" />
+                                </StackPanel>
+                                <Border Classes="taskBadge warning" IsVisible="{Binding HasProblem}">
+                                  <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <fi:FluentIcon Icon="Info" />
+                                    <TextBlock Text="{Binding Problem}" />
+                                  </StackPanel>
+                                </Border>
+                                <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasSchedule}">
+                                  <fi:FluentIcon Classes="metaIcon" Icon="Clock" />
+                                  <TextBlock Classes="meta" Text="{Binding Schedule}" />
+                                </StackPanel>
+                                <TextBlock Classes="meta" Text="已暂停" IsVisible="{Binding Paused}" />
+                              </StackPanel>
+                            </Grid>
+                            <ProgressBar Classes="rowProgress" Minimum="0" Maximum="100" Value="{Binding Progress}" IsVisible="{Binding IsRunning}" />
+                          </Panel>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel IsVisible="{Binding !HasTasks}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="5" Margin="14">
+                      <TextBlock Classes="sectionLabel" HorizontalAlignment="Center" Text="没有匹配任务" />
+                      <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap" Text="调整搜索词或筛选条件后重试。" />
+                    </StackPanel>
+                  </Grid>
+                </DockPanel>
+              </Border>
+
+              <Border Grid.Column="1" Classes="vline" />
+
+              <!-- ================= 主区 ================= -->
+              <DockPanel Grid.Column="2" IsVisible="{Binding HasTask}">
+                <!-- 紧凑头部：名称与描述同排，触发方式与状态置于第二行 -->
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto"
+                      ColumnSpacing="10" RowSpacing="3" Margin="20,12,20,0">
+                  <Border Grid.RowSpan="2" Classes="headIcon" VerticalAlignment="Center">
+                    <fi:FluentIcon Icon="{Binding SelectedTask.Icon, FallbackValue=CalendarClock}" />
+                  </Border>
+                  <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource FgPrimaryBrush}"
+                               MaxWidth="360" VerticalAlignment="Center" Text="{Binding SelectedTask.Name, FallbackValue=''}"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedTask.Name, FallbackValue=''}" />
+                    <TextBlock Grid.Column="1" Classes="meta" Text="{Binding SelectedTask.Description, FallbackValue=''}"
+                               ToolTip.Tip="{Binding SelectedTask.Description, FallbackValue=''}" />
+                  </Grid>
+                  <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <fi:FluentIcon Classes="metaIcon" Icon="Flash" />
+                      <TextBlock Classes="meta" Text="{Binding SelectedTask.TriggerText, FallbackValue=''}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <Ellipse Classes="dot" Classes.succeeded="{Binding SelectedTask.IsSucceeded, FallbackValue=False}"
+                               Classes.failed="{Binding SelectedTask.IsFailed, FallbackValue=False}"
+                               Classes.running="{Binding SelectedTask.IsRunning, FallbackValue=False}" />
+                      <TextBlock Classes="st" Classes.succeeded="{Binding SelectedTask.IsSucceeded, FallbackValue=False}"
+                                 Classes.failed="{Binding SelectedTask.IsFailed, FallbackValue=False}"
+                                 Classes.running="{Binding SelectedTask.IsRunning, FallbackValue=False}"
+                                 Text="{Binding SelectedTask.RowStatus, FallbackValue=''}" />
+                      <TextBlock Classes="meta" Text="{Binding SelectedTask.Time, FallbackValue=''}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Grid.RowSpan="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <buttons:IconButton Classes="contentButton buttonPrimary buttonSmall" Text="手动执行"
+                                        Click="OnMockAction" Tag="手动执行仅作交互示意；此预览不会启动自动化任务。">
+                      <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" IconSize="Size16" /></buttons:IconButton.Icon>
+                    </buttons:IconButton>
+                    <Button Classes="contentButton buttonQuiet buttonSmall" Width="28" MinWidth="0" Padding="0"
+                            ToolTip.Tip="更多操作 · 此页仅作布局预览" Click="OnMockAction"
+                            Tag="更多操作仅作预览示意；不会复制、删除或修改任务。">
+                      <fi:FluentIcon Icon="MoreHorizontal" IconSize="Size16" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+                <!-- 页签：替代左侧 48px 图标栏 -->
+                <StackPanel DockPanel.Dock="Top" Margin="20,6,20,0">
+                  <ListBox Classes="tabs" ItemsSource="{Binding PageTabs}" SelectedIndex="{Binding TabIndex}">
+                    <ListBox.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <Border Classes="tabLine"><TextBlock Text="{Binding}" /></Border>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </StackPanel>
+                <Border DockPanel.Dock="Top" Classes="hline" />
+
+                <!-- 底部：运行报告 / 日志，默认一条底栏 -->
+                <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" IsVisible="{Binding IsRunsTab}">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Top" Classes="logDrawerHeader" Click="OnToggleDrawer"
+                            ToolTip.Tip="展开 / 收起运行日志" AutomationProperties.Name="展开 / 收起运行日志">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                      <TextBlock Classes="body" FontWeight="Medium" Text="运行日志" />
+                      <TextBlock Grid.Column="1" Classes="meta" Text="仅显示 mock 日志" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="2" Classes="meta" Text="{Binding LogLineCount}" />
+                      <Border Grid.Column="3" Width="28" Height="28" CornerRadius="6"
+                              Background="{DynamicResource BgSurfaceSubtleBrush}" VerticalAlignment="Center">
+                        <Panel>
+                          <fi:FluentIcon Icon="ChevronUp" IconSize="Size16" IsVisible="{Binding !IsDrawerOpen}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                          <fi:FluentIcon Icon="ChevronDown" IconSize="Size16" IsVisible="{Binding IsDrawerOpen}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Panel>
+                      </Border>
+                    </Grid>
+                    </Button>
+                    <SelectableTextBlock IsVisible="{Binding IsDrawerOpen}" Height="200" Margin="24,0,20,14"
+                                         FontFamily="Cascadia Mono, Consolas, monospace" FontSize="12" LineHeight="20"
+                                         Foreground="{DynamicResource FgSecondaryBrush}" Text="{Binding LogText}" />
+                  </DockPanel>
+                </Border>
+
+                <Panel>
+                <!-- 运行记录页 -->
+                <Grid ColumnDefinitions="240,Auto,*" IsVisible="{Binding IsRunsTab}">
+                  <DockPanel Margin="10,14,10,10">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="12,0,0,8">
+                      <TextBlock Classes="sectionLabel" Text="运行记录" />
+                      <TextBlock Classes="meta" Text="近 50 次" IsVisible="{Binding HasRuns}" />
+                      <TextBlock Classes="meta" Text="暂无记录" IsVisible="{Binding !HasRuns}" />
+                    </StackPanel>
+                    <ListBox Classes="flat" ItemsSource="{Binding Runs}" SelectedItem="{Binding SelectedRun}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="pages:LayoutRun">
+                          <Panel ToolTip.Tip="{Binding ToolTipText}">
+                            <Border Classes="selBar" IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+                            <Grid Classes="runRow" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                              <Ellipse Classes="dot" Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}"
+                                       Classes.running="{Binding IsRunning}" Classes.cancelled="{Binding IsCancelled}" />
+                              <TextBlock Grid.Column="1" Classes="body" Text="{Binding Time}" />
+                              <TextBlock Grid.Column="2" Classes="meta" Text="{Binding Trigger}" />
+                            </Grid>
+                          </Panel>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                  </DockPanel>
+
+                  <Border Grid.Column="1" Classes="vline" />
+
+                  <DockPanel Grid.Column="2" IsVisible="{Binding HasRun}">
+                    <!-- 本次运行摘要：通用的概要栏 -->
+                    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="20,14">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <StackPanel Spacing="6">
+                          <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Classes="statusPill" Padding="10,3" CornerRadius="12"
+                                    Classes.succeeded="{Binding SelectedRun.IsSucceeded, FallbackValue=False}"
+                                    Classes.failed="{Binding SelectedRun.IsFailed, FallbackValue=False}"
+                                    Classes.running="{Binding SelectedRun.IsRunning, FallbackValue=False}"
+                                    Classes.cancelled="{Binding SelectedRun.IsCancelled, FallbackValue=False}">
+                              <TextBlock Text="{Binding SelectedRun.StateText, FallbackValue=''}" />
+                            </Border>
+                            <TextBlock Classes="textBody" FontWeight="{DynamicResource ContentItemFontWeight}"
+                                       Text="{Binding SelectedRun.Time, FallbackValue=''}" VerticalAlignment="Center" />
+                            <TextBlock Classes="textMeta" Text="{Binding SelectedRun.Trigger, StringFormat='{}{0}触发'}" VerticalAlignment="Center" />
+                            <TextBlock Classes="textMeta" Text="{Binding SelectedRun.Duration, StringFormat='耗时 {0}'}" VerticalAlignment="Center" />
+                          </StackPanel>
+                          <TextBlock Classes="textSecondary" Text="{Binding SelectedRun.Message, FallbackValue=''}"
+                                     TextTrimming="CharacterEllipsis" MinHeight="18" ToolTip.Tip="{Binding SelectedRun.Message, FallbackValue=''}" />
+                        </StackPanel>
+                        <buttons:IconButton Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Text="运行日志"
+                                            VerticalAlignment="Top" Click="OnShowFullLog">
+                          <buttons:IconButton.Icon><fi:FluentIcon Icon="DocumentText" IconSize="Size16" /></buttons:IconButton.Icon>
+                        </buttons:IconButton>
+                      </Grid>
+                    </Border>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Visible">
+                      <ItemsControl ItemsSource="{Binding RunGraph}" Margin="20,16">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><graphs:DependencyGraphPanel Classes="automationLane" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                      </ItemsControl>
+                    </ScrollViewer>
+                  </DockPanel>
+
+                  <StackPanel Grid.Column="2" IsVisible="{Binding !HasRun}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                              Spacing="8" MaxWidth="360" Margin="22">
+                    <fi:FluentIcon Icon="History" IconSize="Size32" Foreground="{DynamicResource FgMetaBrush}"
+                                   HorizontalAlignment="Center" />
+                    <TextBlock Classes="body" FontWeight="Medium" HorizontalAlignment="Center" Text="这个任务尚无运行记录" />
+                    <TextBlock Classes="meta" TextAlignment="Center" TextWrapping="Wrap"
+                               Text="运行历史、流程和日志会显示在这里。当前内容仅用于布局预览。" />
+                  </StackPanel>
+                </Grid>
+
+                <!-- 编排页：沿用共享样式的概要栏、脚本重载入口和图样式 -->
+                <DockPanel IsVisible="{Binding IsOrchestrationTab}">
+                  <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="20,14">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+                      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Border Padding="10,3" CornerRadius="12" Background="{DynamicResource NeutralStatusBgBrush}">
+                          <TextBlock Text="任务编排" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" FontWeight="SemiBold" />
+                        </Border>
+                        <TextBlock Classes="textBody" FontWeight="SemiBold" Text="按当前设置将执行的完整流程" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <buttons:IconButton Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Text="重新加载脚本"
+                                          Click="OnMockAction" Tag="重新加载仅作 Mock 示意，不会下载或更新真实脚本。">
+                        <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowClockwise" IconSize="Size16" /></buttons:IconButton.Icon>
+                      </buttons:IconButton>
+                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="textMeta" Text="{Binding ScriptMessage}"
+                                 IsVisible="{Binding NeedsScriptReload}" TextWrapping="Wrap" Foreground="{DynamicResource TextWarningBrush}" />
+                    </Grid>
+                  </Border>
+                  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Visible">
+                    <ItemsControl ItemsSource="{Binding PlanGraph}" Margin="20,16">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><graphs:DependencyGraphPanel Classes="automationLane" /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </DockPanel>
+                <!-- 参数设置页：左侧锚点导航，右侧连续滚动分区 -->
+                <Grid IsVisible="{Binding IsSettingsTab}" ColumnDefinitions="160,*" ColumnSpacing="28"
+                      Margin="24,18,20,20">
+                  <ListBox x:Name="ParameterNavigation" Classes="sectionNav" VerticalAlignment="Top" SelectedIndex="0"
+                           SelectionChanged="OnParameterSectionChanged"
+                           ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBoxItem Tag="TriggerSection"><TextBlock Classes="body" Text="触发器" /></ListBoxItem>
+                    <ListBoxItem Tag="BehaviorSection"><TextBlock Classes="body" Text="运行行为" /></ListBoxItem>
+                    <ListBoxItem Tag="RetrySection"><TextBlock Classes="body" Text="超时与重试" /></ListBoxItem>
+                    <ListBoxItem Tag="NotificationSection"><TextBlock Classes="body" Text="结果通知" /></ListBoxItem>
+                  </ListBox>
+                  <ScrollViewer x:Name="ParameterScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="ParameterSections" Spacing="24" MaxWidth="640" HorizontalAlignment="Left" Margin="0,0,12,24">
+                <!-- 触发器分区 -->
+                <StackPanel x:Name="TriggerSection">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,12">
+                    <StackPanel Spacing="3">
+                      <TextBlock Classes="paneTitle" Text="触发器" />
+                      <TextBlock Classes="meta" Text="任务可由手动操作、计划时间或外部事件启动。切换仅影响当前预览。" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="contentButton buttonSecondary buttonSmall" Content="添加触发器"
+                            Click="OnMockAction" Tag="添加触发器仅作交互示意；此预览不会修改计划。" />
+                  </Grid>
+
+                    <StackPanel>
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,14">
+                        <StackPanel Spacing="3">
+                          <TextBlock Classes="body" FontWeight="Medium" Text="手动运行" />
+                          <TextBlock Classes="meta" Text="允许用户从任务详情中手动启动" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Content="启用" IsChecked="True" ToolTip.Tip="只切换本地 mock 状态" />
+                      </Grid>
+                      <Border Classes="hline" />
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,14">
+                        <StackPanel Spacing="3">
+                          <TextBlock Classes="body" FontWeight="Medium" Text="定时触发" />
+                          <TextBlock Classes="meta" Text="工作日 09:30 · Asia/Shanghai" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                          <TextBlock Classes="meta" Text="已暂停" />
+                          <CheckBox Content="启用" IsChecked="False" ToolTip.Tip="只切换本地 mock 状态" />
+                        </StackPanel>
+                      </Grid>
+                      <Border Classes="hline" />
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,14">
+                        <StackPanel Spacing="3">
+                          <TextBlock Classes="body" FontWeight="Medium" Text="文件变更事件" />
+                          <TextBlock Classes="meta" Text="监听指定工作区的提交变更" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Content="未配置" IsEnabled="False" IsChecked="False" />
+                      </Grid>
+                      <Border Classes="hline" />
+                      <TextBlock Classes="meta" Margin="0,14,0,0" TextWrapping="Wrap"
+                                 Text="运行队列、计划启停和事件订阅均为示意；这些控件不会连接调度器或写入配置。" />
+                    </StackPanel>
+
+                </StackPanel>
+                      <Border Classes="hline" />
+                      <StackPanel x:Name="BehaviorSection" Spacing="16">
+                        <StackPanel Spacing="4">
+                          <TextBlock Classes="paneTitle" Text="运行行为" />
+                          <TextBlock Classes="meta" TextWrapping="Wrap" Text="设置任务的并发与失败策略。字段为只读 mock，不会保存。" />
+                        </StackPanel>
+                        <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="14">
+                          <TextBlock Classes="body" Text="最大并发" />
+                          <TextBox Grid.Column="1" Text="1 个实例" IsReadOnly="True" />
+                          <TextBlock Grid.Row="1" Classes="body" Text="失败后" />
+                          <ComboBox Grid.Row="1" Grid.Column="1" IsEnabled="False" SelectedIndex="0">
+                            <ComboBoxItem Content="停止后续步骤" />
+                            <ComboBoxItem Content="继续执行" />
+                          </ComboBox>
+                          <TextBlock Grid.Row="2" Classes="body" Text="队列策略" />
+                          <TextBox Grid.Row="2" Grid.Column="1" Text="同任务顺序排队" IsReadOnly="True" />
+                        </Grid>
+                      </StackPanel>
+                      <Border Classes="hline" />
+                      <StackPanel x:Name="RetrySection" Spacing="16">
+                        <TextBlock Classes="paneTitle" Text="超时与重试" />
+                        <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="14">
+                          <TextBlock Classes="body" Text="单步超时" />
+                          <TextBox Grid.Column="1" Text="15 分钟" IsReadOnly="True" />
+                          <TextBlock Grid.Row="1" Classes="body" Text="失败重试" />
+                          <TextBox Grid.Row="1" Grid.Column="1" Text="最多 2 次" IsReadOnly="True" />
+                        </Grid>
+                      </StackPanel>
+                      <Border Classes="hline" />
+                      <StackPanel x:Name="NotificationSection" Spacing="12">
+                        <TextBlock Classes="paneTitle" Text="结果通知" />
+                        <CheckBox Content="任务结束后发送结果通知" IsChecked="True" ToolTip.Tip="只展示控件状态，不会发送通知" />
+                      </StackPanel>
+                    </StackPanel>
+                  </ScrollViewer>
+                </Grid>
+                </Panel>
+              </DockPanel>
+              <StackPanel Grid.Column="2" IsVisible="{Binding !HasTask}" VerticalAlignment="Center" HorizontalAlignment="Center"
+                          Spacing="8" MaxWidth="400" Margin="24">
+                <TextBlock Classes="paneTitle" HorizontalAlignment="Center" Text="{Binding EmptySelectionHint}" TextWrapping="Wrap" />
+                <TextBlock Classes="meta" HorizontalAlignment="Center" Text="任务详情会与左侧筛选结果保持同步。" TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Border>
+      </ThemeVariantScope>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

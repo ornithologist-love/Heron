@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Heron.ClientControls.Gallery.GalleryView"
+             Background="{DynamicResource BgContentBrush}">
+  <Grid RowDefinitions="Auto,Auto,*">
+    <Grid Margin="20,16" ColumnDefinitions="*,Auto,Auto">
+      <TextBlock Text="控件 Gallery" Classes="textPageTitle" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Margin="0,0,12,0" Classes="contentButton" Content="独立预览窗口" Click="OpenPreviewWindow" />
+      <ComboBox Grid.Column="2" x:Name="ThemePicker" Width="110" SelectedIndex="0" SelectionChanged="ChangeTheme">
+        <ComboBoxItem Content="浅色" />
+        <ComboBoxItem Content="深色" />
+      </ComboBox>
+    </Grid>
+    <StackPanel Grid.Row="1" Margin="20,0,20,12" Spacing="8">
+      <TabControl x:Name="Groups" SelectionChanged="ChangeGroup" />
+      <TabControl x:Name="Scenes" SelectionChanged="ChangeScene" />
+    </StackPanel>
+    <ContentControl Grid.Row="2" x:Name="PreviewContent" />
+  </Grid>
+</UserControl>

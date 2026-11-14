@@ -1,0 +1,295 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fi="using:FluentIcons.Avalonia">
+  <!--
+    自动化任务卡片共享样式：Gallery「自动化任务卡片」工作台与正式自动化页左侧列表共用，按类名生效，与数据类型无关。
+    结构（两行，固定高度 56）：
+      [图标块] 任务名 ……………………………… [状态]
+               [触发器徽标] [触发器徽标] …… 时间
+    规则：
+    1. 安静状态（成功 / 尚未运行）只用圆点 + 文字；需要关注的状态（运行中 / 排队 / 待审核 / 失败 / 已取消）用浅底胶囊。
+    2. 触发器徽标是无描边的中性浅底标签；模板问题用暖色 / 红色徽标替代触发器，不再叠加状态。
+    3. 选中：浅品牌底 + 选中描边；草稿：暖色浅底 + 暖色描边 + 「草稿」徽标；不可用：名称与图标降为次要色。
+    4. 运行中：卡片底部贴 2px 进度条，不占布局高度。
+    5. 只引用语义 Token，不写死色值。
+    类名：Border.taskCard 挂 selected / draft / unavailable；
+          Border.statusPill 挂 idle / queued / running / review / succeeded / failed / cancelled；
+          Border.taskBadge 挂 warning / danger / draft。
+  -->
+
+  <!-- ===== 卡片容器 ===== -->
+  <Style Selector="Border.taskCard">
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="Padding" Value="10,9" />
+    <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.taskCard:pointerover">
+    <Setter Property="Background" Value="{DynamicResource BgSurfaceSubtleBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+  </Style>
+  <Style Selector="Border.taskCard.selected, ListBox.taskList > ListBoxItem:selected Border.taskCard">
+    <Setter Property="Background" Value="{DynamicResource BgSelectedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderSelectedBrush}" />
+  </Style>
+  <Style Selector="Border.taskCard.draft">
+    <Setter Property="Background" Value="{DynamicResource WarningBgBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+  </Style>
+  <Style Selector="Border.taskCard.draft.selected, ListBox.taskList > ListBoxItem:selected Border.taskCard.draft">
+    <Setter Property="BorderBrush" Value="{DynamicResource WarningIconBrush}" />
+  </Style>
+
+  <!-- ===== 图标块 ===== -->
+  <Style Selector="Border.taskIconTile">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="0,1,0,0" />
+    <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+  </Style>
+  <Style Selector="Border.taskIconTile > fi|FluentIcon">
+    <Setter Property="Width" Value="13" />
+    <Setter Property="Height" Value="13" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource FgLinkBrush}" />
+  </Style>
+  <Style Selector="Border.taskCard.selected Border.taskIconTile, ListBox.taskList > ListBoxItem:selected Border.taskIconTile">
+    <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+  </Style>
+  <Style Selector="Border.taskCard.unavailable Border.taskIconTile">
+    <Setter Property="Background" Value="{DynamicResource NeutralStatusBgBrush}" />
+  </Style>
+  <Style Selector="Border.taskCard.unavailable Border.taskIconTile > fi|FluentIcon">
+    <Setter Property="Foreground" Value="{DynamicResource FgDisabledBrush}" />
+  </Style>
+
+  <!-- ===== 文字 ===== -->
+  <Style Selector="TextBlock.taskName">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="MaxLines" Value="1" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="Border.taskCard.unavailable TextBlock.taskName">
+    <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.taskTime">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="Foreground" Value="{DynamicResource FgMetaBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="MaxLines" Value="1" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+
+  <!-- ===== 手动运行按钮：所有任务默认能力，低调次要样式 ===== -->
+  <Style Selector="Button.runButton">
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.runButton TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+  </Style>
+  <Style Selector="Button.runButton fi|FluentIcon">
+    <Setter Property="Width" Value="11" />
+    <Setter Property="Height" Value="11" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource FgLinkBrush}" />
+  </Style>
+  <Style Selector="Button.runButton:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+  </Style>
+
+  <!-- ===== 触发器 / 问题 / 草稿徽标：无描边浅底标签 ===== -->
+  <Style Selector="Border.taskBadge">
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource NeutralStatusBgBrush}" />
+  </Style>
+  <Style Selector="Border.taskBadge TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource NeutralStatusFgBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="MaxLines" Value="1" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="Border.taskBadge fi|FluentIcon">
+    <Setter Property="Width" Value="12" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource NeutralStatusIconBrush}" />
+  </Style>
+  <!-- 选中卡片底色变浅品牌色，中性徽标改用卡片面色避免糊在一起 -->
+  <Style Selector="Border.taskCard.selected Border.taskBadge, ListBox.taskList > ListBoxItem:selected Border.taskBadge">
+    <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+  </Style>
+  <Style Selector="Border.taskBadge.warning, Border.taskBadge.draft">
+    <Setter Property="Background" Value="{DynamicResource WarningBadgeBgBrush}" />
+  </Style>
+  <Style Selector="Border.taskBadge.warning TextBlock, Border.taskBadge.draft TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextWarningBrush}" />
+  </Style>
+  <Style Selector="Border.taskBadge.warning fi|FluentIcon">
+    <Setter Property="Foreground" Value="{DynamicResource TextWarningBrush}" />
+  </Style>
+  <Style Selector="Border.taskBadge.draft TextBlock">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.taskBadge.danger">
+    <Setter Property="Background" Value="{DynamicResource DangerBgBrush}" />
+  </Style>
+  <Style Selector="Border.taskBadge.danger TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextDangerBrush}" />
+  </Style>
+  <Style Selector="Border.taskBadge.danger fi|FluentIcon">
+    <Setter Property="Foreground" Value="{DynamicResource TextDangerBrush}" />
+  </Style>
+
+  <!-- ===== 状态：安静态只有圆点 + 文字，关注态为浅底胶囊 ===== -->
+  <Style Selector="Border.statusPill">
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Padding" Value="7,0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource NeutralStatusBgBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="Foreground" Value="{DynamicResource NeutralStatusFgBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill Ellipse">
+    <Setter Property="Width" Value="6" />
+    <Setter Property="Height" Value="6" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Fill" Value="{DynamicResource NeutralStatusIconBrush}" />
+  </Style>
+
+  <Style Selector="Border.statusPill.idle, Border.statusPill.succeeded">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="Border.statusPill.idle TextBlock">
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource FgMetaBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.idle Ellipse">
+    <Setter Property="Fill" Value="{DynamicResource FgDisabledBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.succeeded TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextSuccessBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.succeeded Ellipse">
+    <Setter Property="Fill" Value="{DynamicResource SuccessIconBrush}" />
+  </Style>
+
+  <Style Selector="Border.statusPill.running, Border.statusPill.queued">
+    <Setter Property="Background" Value="{DynamicResource InfoBgBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.running TextBlock, Border.statusPill.queued TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource InfoFgBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.running Ellipse, Border.statusPill.queued Ellipse">
+    <Setter Property="Fill" Value="{DynamicResource InfoIconBrush}" />
+  </Style>
+  <!-- 运行中圆点呼吸，排队保持静止 -->
+  <Style Selector="Border.statusPill.running Ellipse">
+    <Style.Animations>
+      <Animation Duration="0:0:1.2" IterationCount="INFINITE" PlaybackDirection="Alternate">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.3" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <Style Selector="Border.statusPill.review">
+    <Setter Property="Background" Value="{DynamicResource WarningBadgeBgBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.review TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextWarningBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.review Ellipse">
+    <Setter Property="Fill" Value="{DynamicResource WarningIconBrush}" />
+  </Style>
+
+  <Style Selector="Border.statusPill.failed">
+    <Setter Property="Background" Value="{DynamicResource DangerBgBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.failed TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextDangerBrush}" />
+  </Style>
+  <Style Selector="Border.statusPill.failed Ellipse">
+    <Setter Property="Fill" Value="{DynamicResource DangerIconBrush}" />
+  </Style>
+  <!-- 已取消：中性胶囊（默认样式），不使用警告色 -->
+
+  <!-- ===== 运行进度：贴底 2px ===== -->
+  <Style Selector="ProgressBar.taskProgress">
+    <Setter Property="Height" Value="2" />
+    <Setter Property="MinHeight" Value="2" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource InfoIconBrush}" />
+  </Style>
+
+  <!-- ===== ListBox 承载：去掉主题自带的条目底色，交互态全部交给卡片 ===== -->
+  <Style Selector="ListBox.taskList">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.taskList > ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ListBox.taskList > ListBoxItem /template/ ContentPresenter,
+                   ListBox.taskList > ListBoxItem:pointerover /template/ ContentPresenter,
+                   ListBox.taskList > ListBoxItem:pressed /template/ ContentPresenter,
+                   ListBox.taskList > ListBoxItem:selected /template/ ContentPresenter,
+                   ListBox.taskList > ListBoxItem:selected:pointerover /template/ ContentPresenter,
+                   ListBox.taskList > ListBoxItem:selected:focus /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+</Styles>

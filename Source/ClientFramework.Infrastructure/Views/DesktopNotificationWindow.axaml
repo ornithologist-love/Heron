@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:toast="using:Heron.ClientControls.Notifications"
+        x:Class="Heron.ClientFramework.Infrastructure.DesktopNotificationWindow"
+                Width="452"
+        MaxHeight="420"
+        SizeToContent="Height"
+        WindowStartupLocation="Manual"
+        WindowDecorations="None"
+        CanResize="False"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+    <!--
+      ToastHost uses bottom alignment for its in-app overlay placement. Keep it in
+      an auto-sized panel here so that alignment cannot stretch the independent
+      desktop window and introduce a large transparent gap between notifications.
+    -->
+    <StackPanel>
+        <toast:ToastHost x:Name="Toasts"
+                         Margin="4"
+                         MaxToasts="1"
+                         Placement="BottomRight" />
+    </StackPanel>
+</Window>

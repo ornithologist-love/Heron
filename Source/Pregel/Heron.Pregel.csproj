@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.Pregel</PackageId>
+    <AssemblyName>Heron.Pregel</AssemblyName>
+    <RootNamespace>Heron.Pregel</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Reusable durable graph execution: Pregel.</Description>
+
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Heron.Pregel.Tests" />
+    <None Include="**/*.cs" Exclude="obj/**;bin/**" Pack="true" PackagePath="api/%(RecursiveDir)" />
+  </ItemGroup>
+</Project>

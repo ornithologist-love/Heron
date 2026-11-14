@@ -1,0 +1,427 @@
+<!--
+  IconButton theme. Layout (three-slot template), icon-only sizing, and hover/press
+  scale feedback adapted from the SukiUI Button theme at tag 6.1.1 (MIT). See
+  THIRD-PARTY-NOTICES.md.
+
+  Color tokens are NOT re-declared here. IconButton is a Button subclass, and
+  Avalonia type selectors (e.g. "Button.buttonPrimary") never match a subclass,
+  so the host's existing Button.buttonPrimary/.buttonSecondary/... styles in
+  Heron.Client/App.axaml cannot restyle an IconButton. To keep both controls
+  pixel-identical and share one source of truth, the semantic classes below
+  reuse the exact same DynamicResource keys already defined in App.axaml
+  (ButtonPrimaryBrush, ButtonNeutralBrush, ButtonDangerBrush, TextLinkBrush,
+  etc.). If App.axaml changes a color, both Button and IconButton follow.
+
+  This lets existing pages migrate a plain content Button to IconButton by only
+  swapping the element name and moving the icon into the Icon property, the
+  same Classes="contentButton buttonPrimary buttonSmall" keeps working.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:buttons="using:Heron.ClientControls.Buttons">
+
+    <x:Double x:Key="IconButtonIconSize">16</x:Double>
+
+    <!-- 独立使用也跟随宿主主题；亮色保留原值。 -->
+    <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+    <SolidColorBrush x:Key="IconButtonSurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="IconButtonSurfaceHoverBrush" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="IconButtonSurfacePressedBrush" Color="#F1F5F9" />
+    <SolidColorBrush x:Key="IconButtonBorderBrush" Color="{DynamicResource Neutral300Color}" />
+    <SolidColorBrush x:Key="IconButtonBorderHoverBrush" Color="{DynamicResource Neutral300Color}" />
+    <SolidColorBrush x:Key="IconButtonTextBrush" Color="#172033" />
+    <SolidColorBrush x:Key="IconButtonFlatHoverBrush" Color="#F1F5F9" />
+    <SolidColorBrush x:Key="IconButtonFlatPressedBrush" Color="#E2E8F0" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+        <SolidColorBrush x:Key="IconButtonSurfaceBrush">#40403D</SolidColorBrush>
+        <SolidColorBrush x:Key="IconButtonSurfaceHoverBrush">#4A4A46</SolidColorBrush>
+        <SolidColorBrush x:Key="IconButtonSurfacePressedBrush">#252524</SolidColorBrush>
+        <SolidColorBrush x:Key="IconButtonBorderBrush">Transparent</SolidColorBrush>
+        <SolidColorBrush x:Key="IconButtonBorderHoverBrush">Transparent</SolidColorBrush>
+        <SolidColorBrush x:Key="IconButtonTextBrush">#D8D8D4</SolidColorBrush>
+        <SolidColorBrush x:Key="IconButtonFlatHoverBrush">#40403D</SolidColorBrush>
+        <SolidColorBrush x:Key="IconButtonFlatPressedBrush">#252524</SolidColorBrush>
+    </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+    <ControlTheme x:Key="{x:Type buttons:IconButton}" TargetType="buttons:IconButton">
+        <Setter Property="Background" Value="{DynamicResource IconButtonSurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource IconButtonTextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource ContentButtonBorderThickness}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.12" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
+            </Transitions>
+        </Setter>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ClipToBounds="False">
+                    <Panel IsVisible="{DynamicResource ButtonEffectsVisible}" IsHitTestVisible="False">
+                    <Border CornerRadius="{TemplateBinding CornerRadius}"
+                            Margin="{ReflectionBinding Margin, ElementName=PART_Root}"
+                            Background="{TemplateBinding Background}"
+                            BoxShadow="{TemplateBinding Shadow}" />
+                    <Border Name="PART_IntroGlow"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Background="{TemplateBinding Background}"
+                            BoxShadow="0 0 8 1 #551769E0"
+                            Opacity="0"
+                            IsVisible="{TemplateBinding ShowIntroGlow}"
+                            IsHitTestVisible="False" />
+                    </Panel>
+                    <Border Name="PART_Root"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            TextElement.Foreground="{TemplateBinding Foreground}">
+                        <StackPanel Name="PART_Layout"
+                                    HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    Spacing="{TemplateBinding Spacing}">
+                            <Panel Name="PART_IconSlot"
+                                   Width="{TemplateBinding IconSize}"
+                                   Height="{TemplateBinding IconSize}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   ClipToBounds="False">
+                                <Viewbox Name="PART_IconBox"
+                                         Width="{TemplateBinding IconSize}"
+                                         Height="{TemplateBinding IconSize}">
+                                    <ContentPresenter Name="PART_IconHost"
+                                                      Content="{TemplateBinding Icon}"
+                                                      FontFamily="{TemplateBinding FontFamily}"
+                                                      FontSize="{TemplateBinding IconSize}"
+                                                      FontWeight="{TemplateBinding FontWeight}"
+                                                      Foreground="{TemplateBinding Foreground}" />
+                                </Viewbox>
+                                <Ellipse Name="PART_IconDot"
+                                         Width="{TemplateBinding DotSize}"
+                                         Height="{TemplateBinding DotSize}"
+                                         HorizontalAlignment="Right"
+                                         VerticalAlignment="Top"
+                                         Fill="{TemplateBinding DotBrush}"
+                                         IsVisible="False"
+                                         IsHitTestVisible="False"
+                                         Stroke="White"
+                                         StrokeThickness="1.5"
+                                         ZIndex="100" />
+                            </Panel>
+                            <ContentPresenter Name="PART_TextHost"
+                                              Content="{TemplateBinding Text}"
+                                              FontFamily="{TemplateBinding FontFamily}"
+                                              FontSize="{TemplateBinding FontSize}"
+                                              FontWeight="{TemplateBinding FontWeight}"
+                                              Foreground="{TemplateBinding Foreground}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsHitTestVisible="False" />
+                        </StackPanel>
+                    </Border>
+                    <!-- Border badge remains inside the control's measured bounds. IconButton
+                         reserves a top/right gutter on PART_Root while this badge is visible,
+                         avoiding parent clipping without transforms or screen coordinates. -->
+                    <Ellipse Name="PART_BorderDot"
+                             Width="{TemplateBinding DotSize}"
+                             Height="{TemplateBinding DotSize}"
+                             HorizontalAlignment="Right"
+                             VerticalAlignment="Top"
+                             Fill="{TemplateBinding DotBrush}"
+                             IsVisible="False"
+                             IsHitTestVisible="False"
+                             Stroke="White"
+                             StrokeThickness="2"
+                             ZIndex="200" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+
+        <!--  Base interaction states: calm hover, pressed shrink (SukiUI feel).  -->
+        <Style Selector="^:pointerover">
+            <Setter Property="Background" Value="{DynamicResource IconButtonSurfaceHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+        </Style>
+        <Style Selector="^:pressed">
+            <Setter Property="Background" Value="{DynamicResource IconButtonSurfacePressedBrush}" />
+            <Setter Property="RenderTransform" Value="scale(0.97)" />
+        </Style>
+
+        <!--  Icon-only buttons also pop slightly on hover (SukiUI Basic.Icon behavior).  -->
+        <Style Selector="^:icononly:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.05)" />
+        </Style>
+        <Style Selector="^:icononly:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.95)" />
+        </Style>
+
+        <!--  Gallery-only free-form variants (not part of the App.axaml button system).  -->
+        <Style Selector="^.flat">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource IconButtonFlatHoverBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource IconButtonFlatPressedBrush}" />
+            </Style>
+        </Style>
+
+        <!-- Heron.Client/App.axaml button system, mirrored 1:1 so pages
+             keep using Classes="contentButton buttonPrimary buttonSmall".
+             Every brush below is the same DynamicResource key App.axaml
+             defines; nothing is redeclared with a different value. -->
+
+        <Style Selector="^.contentButton">
+            <Setter Property="BorderThickness" Value="{DynamicResource ContentButtonBorderThickness}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="^.buttonLarge">
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="MinWidth" Value="96" />
+            <Setter Property="Padding" Value="20,8" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="^.buttonMedium">
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="MinWidth" Value="76" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+        <Style Selector="^.buttonSmall">
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="MinWidth" Value="64" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+        <Style Selector="^.buttonIcon">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="MinWidth" Value="32" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+
+        <Style Selector="^.buttonPrimary.buttonLarge, ^.buttonSuccess.buttonLarge">
+            <Setter Property="FontWeight" Value="{DynamicResource ButtonEmphasisLargeFontWeight}" />
+        </Style>
+        <Style Selector="^.buttonPrimary.buttonMedium, ^.buttonPrimary.buttonSmall, ^.buttonSuccess.buttonMedium, ^.buttonSuccess.buttonSmall">
+            <Setter Property="FontWeight" Value="{DynamicResource ButtonEmphasisFontWeight}" />
+        </Style>
+        <Style Selector="^.buttonPrimary">
+            <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource FgOnAccentBrush}" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryHoverBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryPressedBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryPressedBrush}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^.buttonSuccess">
+            <Setter Property="Background" Value="{DynamicResource ButtonSuccessBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSuccessBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource ButtonSuccessHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonSuccessHoverBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource ButtonSuccessPressedBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonSuccessPressedBrush}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^.buttonSecondary">
+            <Setter Property="Background" Value="{DynamicResource ButtonNeutralBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextDefaultBrush}" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource ButtonNeutralHoverBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource ButtonNeutralPressedBrush}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^.buttonQuiet">
+            <Setter Property="Background" Value="{DynamicResource ButtonQuietBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource TextDefaultBrush}" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource ButtonNeutralHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderDefaultBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource ButtonNeutralPressedBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderDefaultBrush}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^.buttonDanger">
+            <Setter Property="Background" Value="{DynamicResource ButtonDangerBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextDangerBrush}" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource ButtonDangerHoverBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource ButtonDangerPressedBrush}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^.buttonPause">
+            <Setter Property="Background" Value="{DynamicResource ButtonPauseBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ButtonPauseForegroundBrush}" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource ButtonPauseHoverBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource ButtonPausePressedBrush}" />
+            </Style>
+        </Style>
+
+        <Style Selector="^.buttonLink">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource TextLinkBrush}" />
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource ButtonPrimaryHoverBrush}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource ButtonPrimaryPressedBrush}" />
+            </Style>
+        </Style>
+        <Style Selector="^.buttonLink:pointerover /template/ ContentPresenter#PART_TextHost">
+            <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+        </Style>
+
+        <Style Selector="^.contentButton:focus-visible">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderFocusBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="^.contentButton:disabled">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Cursor" Value="Arrow" />
+            <Setter Property="Background" Value="{DynamicResource ButtonDisabledBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderDefaultBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+        </Style>
+        <Style Selector="^.contentButton.buttonLink:disabled">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource TextDisabledBrush}" />
+        </Style>
+
+        <!--  Sizes.  -->
+        <Style Selector="^.small">
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="^.large">
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+
+        <!--  Icon-only shape: square hit area, no padding.  -->
+        <Style Selector="^:icononly">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+        </Style>
+        <Style Selector="^.small:icononly">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+        </Style>
+        <Style Selector="^.large:icononly">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+        </Style>
+
+        <!-- Border badges reserve 9px at the top/right. Expand fixed icon-only
+             controls by the same amount so their original surface size is preserved. -->
+        <Style Selector="^:icononly:borderdot">
+            <Setter Property="Width" Value="41" />
+            <Setter Property="Height" Value="41" />
+        </Style>
+        <Style Selector="^.small:icononly:borderdot">
+            <Setter Property="Width" Value="37" />
+            <Setter Property="Height" Value="37" />
+        </Style>
+        <Style Selector="^.large:icononly:borderdot">
+            <Setter Property="Width" Value="49" />
+            <Setter Property="Height" Value="49" />
+        </Style>
+
+        <!--  Fully round corners (pills, signal lamps).  -->
+        <Style Selector="^.circle">
+            <Setter Property="CornerRadius" Value="100" />
+        </Style>
+
+        <!-- Introductory emphasis is finite; it never acts as an unread indicator. -->
+        <Style Selector="^[ShowIntroGlow=True] /template/ Border#PART_IntroGlow">
+            <Style.Animations>
+                <Animation Duration="0:0:1.8" IterationCount="3" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+                    <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.7" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!--  Breathing pulse for status lamps and activity indicators.  -->
+        <Style Selector="^.pulse">
+            <Style.Animations>
+                <Animation Duration="0:0:1.8" IterationCount="INFINITE" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Opacity" Value="0.45" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>

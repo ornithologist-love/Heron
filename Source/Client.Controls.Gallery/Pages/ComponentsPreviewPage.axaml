@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fi="using:FluentIcons.Avalonia" xmlns:buttons="using:Heron.ClientControls.Buttons"
+             x:Class="Heron.ClientControls.Gallery.Pages.ComponentsPreviewPage" Background="{DynamicResource BgContentBrush}">
+  <ScrollViewer>
+    <StackPanel Margin="20" Spacing="16">
+      <TextBlock Text="基础组件与状态" Classes="textPageTitle" />
+      <TextBlock Text="正式主题、字体、按钮和输入组件；所有尺寸由窗口 DPI 统一换算。" Classes="textSecondary" TextWrapping="Wrap" />
+      <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel x:Name="Samples" Spacing="14">
+          <TextBlock Text="按钮、图标与操作状态" Classes="textSectionTitle" />
+          <WrapPanel>
+            <Button x:Name="SampleButton" Classes="contentButton buttonPrimary buttonMedium" Content="保存配置" Margin="0,0,8,8" />
+            <Button Classes="contentButton buttonSecondary buttonMedium" Content="刷新目录" Margin="0,0,8,8" />
+            <Button Classes="contentButton buttonDanger buttonMedium" Content="停止任务" Margin="0,0,8,8" />
+            <Button Classes="contentButton buttonQuiet buttonSmall" Content="查看详情" Margin="0,0,8,8" />
+            <buttons:IconButton Classes="primary" Text="开始下载" Margin="0,0,8,8">
+              <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowDownload" IconSize="Size16" /></buttons:IconButton.Icon>
+            </buttons:IconButton>
+            <Button Classes="contentButton buttonSecondary buttonMedium" Content="不可用" IsEnabled="False" Margin="0,0,8,8" />
+          </WrapPanel>
+          <TextBlock Text="输入、下拉与选择" Classes="textSectionTitle" />
+          <WrapPanel>
+            <TextBox x:Name="SampleInput" Text="主干 Dev 工作区" Width="240" Margin="0,0,12,12" />
+            <ComboBox x:Name="SampleSelect" Width="240" SelectedIndex="0" Margin="0,0,12,12">
+              <ComboBoxItem Content="主干 Dev 工作区" /><ComboBoxItem Content="Release 工作区" />
+              <ComboBoxItem Content="一个较长的工作区名称，用于观察下拉项宽度" />
+            </ComboBox>
+            <NumericUpDown Width="140" Value="125" Minimum="50" Maximum="300" Margin="0,0,12,12" />
+          </WrapPanel>
+          <WrapPanel>
+            <CheckBox Content="更新工具依赖" IsChecked="True" Margin="0,0,20,8" />
+            <CheckBox Content="运行后通知" Margin="0,0,20,8" />
+            <RadioButton Content="每日运行" GroupName="schedule" IsChecked="True" Margin="0,0,20,8" />
+            <RadioButton Content="仅手动" GroupName="schedule" Margin="0,0,20,8" />
+            <ToggleSwitch Content="启用计划" IsChecked="True" Margin="0,0,20,8" />
+          </WrapPanel>
+          <TextBox Text="长文本预览：在较窄窗口与较高 DPI 下，文本和控件共同参与布局。字体、图标、边框、内边距与弹层均沿用同一个倍率。" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="76" />
+          <ProgressBar Value="62" Minimum="0" Maximum="100" Height="8" />
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDefaultBrush}" BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock Text="字体层级与布局尺寸" Classes="textSectionTitle" />
+          <TextBlock Text="页面标题 · Heron Gallery" Classes="textPageTitle" />
+          <TextBlock Text="正文 · 中文 / English / 0123456789" Classes="textBody" />
+          <TextBlock Text="辅助说明与元数据 · 复用正式字体" Classes="textMeta" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Border Width="100" Height="10" Background="{DynamicResource TextDefaultBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="100 逻辑单位的尺寸标尺" Classes="textMeta" VerticalAlignment="Center" />
+          </StackPanel>
+          <Expander Header="展开内容与边距" IsExpanded="True">
+            <TextBlock Margin="12" Text="这里用于观察折叠容器、文字、边框与间距在全局 DPI 下的比例。" TextWrapping="Wrap" />
+          </Expander>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

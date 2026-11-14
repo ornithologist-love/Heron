@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.AutomationTenants</PackageId>
+    <AssemblyName>Heron.AutomationTenants</AssemblyName>
+    <RootNamespace>Heron.AutomationTenants</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Remote automation workers, native subgraph dispatch and durable resource coordination.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Pregel.Automation/Heron.Pregel.Automation.csproj" />
+    <InternalsVisibleTo Include="Heron.AutomationTenants.Tests" />
+  </ItemGroup>
+</Project>

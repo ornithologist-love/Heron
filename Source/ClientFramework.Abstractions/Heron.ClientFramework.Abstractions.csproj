@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.ClientFramework.Abstractions</PackageId>
+    <AssemblyName>Heron.ClientFramework.Abstractions</AssemblyName>
+    <RootNamespace>Heron.ClientFramework.Abstractions</RootNamespace>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../ClientFramework.Plugins/Heron.ClientFramework.Plugins.csproj" /><PackageReference Include="Avalonia" /><PackageReference Include="CommunityToolkit.Mvvm" /><PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" /></ItemGroup>
+</Project>

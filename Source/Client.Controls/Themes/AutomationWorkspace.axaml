@@ -1,0 +1,329 @@
+  <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:fi="using:FluentIcons.Avalonia">
+    <StyleInclude Source="avares://Heron.ClientControls/Themes/AutomationGraph.axaml" />
+    <StyleInclude Source="avares://Heron.ClientControls/Themes/AutomationTaskCard.axaml" />
+
+    <!-- ===== 外壳：整页一张面板，列之间只用分隔线 ===== -->
+    <Style Selector="Border.mockShell">
+      <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.vline">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource DividerBrush}" />
+    </Style>
+    <Style Selector="Border.hline">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource DividerBrush}" />
+    </Style>
+    <Style Selector="Border.sidePane">
+      <Setter Property="Background" Value="{DynamicResource BgSurfaceSubtleBrush}" />
+    </Style>
+
+    <!-- ===== 文字层级 ===== -->
+    <Style Selector="TextBlock.paneTitle">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.sectionLabel">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource FgMetaBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.meta">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource FgMetaBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.body">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="fi|FluentIcon.metaIcon">
+      <Setter Property="Width" Value="13" />
+      <Setter Property="Height" Value="13" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource FgMetaBrush}" />
+    </Style>
+
+    <!-- ===== 状态色：圆点 / 文字 / 图标共用同一组类名 ===== -->
+    <Style Selector="Ellipse.dot">
+      <Setter Property="Width" Value="7" />
+      <Setter Property="Height" Value="7" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Fill" Value="{DynamicResource FgDisabledBrush}" />
+    </Style>
+    <Style Selector="Ellipse.dot.succeeded"><Setter Property="Fill" Value="{DynamicResource SuccessIconBrush}" /></Style>
+    <Style Selector="Ellipse.dot.failed"><Setter Property="Fill" Value="{DynamicResource DangerIconBrush}" /></Style>
+    <Style Selector="Ellipse.dot.running"><Setter Property="Fill" Value="{DynamicResource InfoIconBrush}" /></Style>
+    <Style Selector="Ellipse.dot.cancelled"><Setter Property="Fill" Value="{DynamicResource NeutralStatusIconBrush}" /></Style>
+    <Style Selector="TextBlock.st">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource FgMetaBrush}" />
+    </Style>
+    <Style Selector="TextBlock.st.succeeded"><Setter Property="Foreground" Value="{DynamicResource TextSuccessBrush}" /></Style>
+    <Style Selector="TextBlock.st.failed"><Setter Property="Foreground" Value="{DynamicResource TextDangerBrush}" /></Style>
+    <Style Selector="TextBlock.st.running"><Setter Property="Foreground" Value="{DynamicResource InfoFgBrush}" /></Style>
+    <Style Selector="fi|FluentIcon.stIcon">
+      <Setter Property="Width" Value="15" />
+      <Setter Property="Height" Value="15" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource FgDisabledBrush}" />
+    </Style>
+    <Style Selector="fi|FluentIcon.stIcon.succeeded"><Setter Property="Foreground" Value="{DynamicResource SuccessIconBrush}" /></Style>
+    <Style Selector="fi|FluentIcon.stIcon.failed"><Setter Property="Foreground" Value="{DynamicResource DangerIconBrush}" /></Style>
+    <Style Selector="fi|FluentIcon.stIcon.running"><Setter Property="Foreground" Value="{DynamicResource InfoIconBrush}" /></Style>
+
+    <!-- ===== 扁平列表：无描边，悬停浅底，选中浅品牌底 + 左侧色条 ===== -->
+    <Style Selector="ListBox.flat">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.flat > ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,0,2" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ListBox.flat > ListBoxItem /template/ ContentPresenter,
+                     ListBox.flat > ListBoxItem:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="ListBox.flat > ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="ListBox.flat > ListBoxItem:selected /template/ ContentPresenter,
+                     ListBox.flat > ListBoxItem:selected:pointerover /template/ ContentPresenter,
+                     ListBox.flat > ListBoxItem:selected:focus /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgSelectedBrush}" />
+    </Style>
+    <Style Selector="Border.selBar">
+      <Setter Property="Width" Value="3" />
+      <Setter Property="Margin" Value="0,8" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <!-- 任务行：舒适 / 紧凑两档 -->
+    <Style Selector="Grid.taskRow">
+      <Setter Property="Margin" Value="14,10,12,10" />
+      <Setter Property="RowSpacing" Value="4" />
+    </Style>
+    <Style Selector="Border.compact Grid.taskRow">
+      <Setter Property="Margin" Value="14,6,12,6" />
+      <Setter Property="RowSpacing" Value="2" />
+    </Style>
+    <Style Selector="Grid.runRow">
+      <Setter Property="Margin" Value="12,9" />
+    </Style>
+    <Style Selector="Border.compact Grid.runRow">
+      <Setter Property="Margin" Value="12,6" />
+    </Style>
+    <Style Selector="TextBlock.rowName">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="fi|FluentIcon.rowIcon">
+      <Setter Property="Width" Value="15" />
+      <Setter Property="Height" Value="15" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.flat > ListBoxItem:selected fi|FluentIcon.rowIcon">
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="ProgressBar.rowProgress">
+      <Setter Property="Height" Value="2" />
+      <Setter Property="MinHeight" Value="2" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Margin" Value="14,0,12,2" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource InfoIconBrush}" />
+    </Style>
+
+    <!-- ===== 筛选胶囊 ===== -->
+    <Style Selector="ListBox.chips">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem">
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0,0,4,0" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="13" />
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem:selected /template/ ContentPresenter,
+                     ListBox.chips > ListBoxItem:selected:pointerover /template/ ContentPresenter,
+                     ListBox.chips > ListBoxItem:selected:focus /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+    <Style Selector="ListBox.chips TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem:selected TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource FgLinkBrush}" />
+      <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+
+    <!-- ===== 文字页签：下划线指示，替代 48px 图标栏 ===== -->
+    <Style Selector="ListBox.tabs">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.tabs > ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,22,0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ListBox.tabs > ListBoxItem /template/ ContentPresenter,
+                     ListBox.tabs > ListBoxItem:pointerover /template/ ContentPresenter,
+                     ListBox.tabs > ListBoxItem:selected /template/ ContentPresenter,
+                     ListBox.tabs > ListBoxItem:selected:pointerover /template/ ContentPresenter,
+                     ListBox.tabs > ListBoxItem:selected:focus /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.tabs Border.tabLine">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="BorderThickness" Value="0,0,0,2" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.tabs.small Border.tabLine">
+      <Setter Property="Height" Value="32" />
+    </Style>
+    <Style Selector="ListBox.tabs Border.tabLine TextBlock">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.tabs.small Border.tabLine TextBlock">
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="ListBox.tabs > ListBoxItem:pointerover Border.tabLine TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+    </Style>
+    <Style Selector="ListBox.tabs > ListBoxItem:selected Border.tabLine">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+    <Style Selector="ListBox.tabs > ListBoxItem:selected Border.tabLine TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource FgPrimaryBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- ===== 头部图标块 ===== -->
+    <Style Selector="Border.headIcon">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}" />
+    </Style>
+    <Style Selector="Border.headIcon > fi|FluentIcon">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource FgLinkBrush}" />
+    </Style>
+
+    <!-- ===== 参数设置分区导航 ===== -->
+    <Style Selector="ListBox.sectionNav">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.sectionNav > ListBoxItem">
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ListBox.sectionNav > ListBoxItem /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="ListBox.sectionNav > ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="ListBox.sectionNav > ListBoxItem:selected /template/ ContentPresenter,
+                     ListBox.sectionNav > ListBoxItem:selected:pointerover /template/ ContentPresenter,
+                     ListBox.sectionNav > ListBoxItem:selected:focus /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgSelectedBrush}" />
+    </Style>
+    <Style Selector="ListBox.sectionNav > ListBoxItem:selected TextBlock">
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource FgLinkBrush}" />
+    </Style>
+
+    <!-- 整条日志栏作为一个按钮，支持鼠标及键盘展开 / 收起。 -->
+    <Style Selector="Button.logDrawerHeader">
+      <Setter Property="Height" Value="40" />
+      <Setter Property="Padding" Value="24,0,14,0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.logDrawerHeader /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.logDrawerHeader:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="Button.logDrawerHeader:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BgPressedBrush}" />
+    </Style>
+
+    <!-- ===== Gallery 控制条 ===== -->
+    <Style Selector="TextBlock.ctlLabel">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </Styles>

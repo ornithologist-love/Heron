@@ -1,0 +1,635 @@
+<!--
+  Heron 颜色 Token。亮色采用暖玉，暗色采用 Gallery「暖灰暗色」确认的暖灰底与绿色强调。
+
+  三层结构：
+    1. 原始色阶  *Color      只定义有哪些颜色，不表达用途；页面禁止直接引用。
+    2. 语义 Token *Brush      背景 / 文字 / 边框 / 操作 / 状态 / 导航；页面只引用这一层。
+    3. 组件 Token            ButtonPrimaryBrush 等既有名称（HeronTheme.axaml），迁移时改为指向语义层。
+
+  颜色职责：
+    Jade     亮色品牌区域与类别色；暗色导航使用中性暖灰
+    Neutral  正文、辅助文字、内容背景、边框、分隔线（文字阶饱和度 < 6%，保持灰黑）
+    玉绿     主操作、链接、焦点；Light 深玉绿 / Dark 翠绿，选中底色保持中性
+    Success / Warning / Danger / Info  有明确业务含义的状态反馈
+
+  HeronTheme 与 Semi 组件通过语义资源统一取色；Blue 色阶只用于信息状态。
+
+  主题变体：Light = 暖玉（原全部取值，逐字节保持不变）；Dark = 墨玉（暖灰底、局部绿色强调，
+  色板来源为本文件配套任务设计，Dark 分支内的语义/组件层通过 StaticResource/DynamicResource
+  引用 Dark 分支的色阶键，随 RequestedThemeVariant 自动切换）。
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+
+    <!-- ===== Light 暖玉（原取值原样保留） ===== -->
+    <ResourceDictionary x:Key="Light">
+  <Thickness x:Key="CardFrameThickness">1</Thickness>
+  <Thickness x:Key="QuietContainerFrameThickness">1</Thickness>
+  <FontWeight x:Key="ContentItemFontWeight">SemiBold</FontWeight>
+  <FontWeight x:Key="SectionTitleFontWeight">SemiBold</FontWeight>
+  <SolidColorBrush x:Key="AnnouncementLabelBrush">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="AnnouncementSurfaceBrush">#EAF2ED</SolidColorBrush>
+  <SolidColorBrush x:Key="AnnouncementTextBrush">#3E433E</SolidColorBrush>
+  <FontWeight x:Key="ChromeLabelWeight">Medium</FontWeight>
+  <SolidColorBrush x:Key="ChromeSecondaryBrush">#64748B</SolidColorBrush>
+  <FontWeight x:Key="NavActiveItemWeight">Bold</FontWeight>
+  <SolidColorBrush x:Key="NavItemTextBrush">#3E433E</SolidColorBrush>
+  <FontWeight x:Key="NavItemWeight">SemiBold</FontWeight>
+  <SolidColorBrush x:Key="StatusActionBackground">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="StatusActionForeground">#FFFFFF</SolidColorBrush>
+
+  <Thickness x:Key="ContentButtonBorderThickness">1</Thickness>
+  <FontWeight x:Key="ButtonEmphasisFontWeight">Medium</FontWeight>
+  <FontWeight x:Key="ButtonEmphasisLargeFontWeight">SemiBold</FontWeight>
+  <x:Boolean x:Key="ButtonEffectsVisible">True</x:Boolean>
+  <!-- ===== 1. 原始色阶 ===== -->
+
+  <!-- Jade 玉色：Jade600 由 #668760 压暗至 #5D7B57，白底对比 4.73 -->
+  <Color x:Key="Jade50Color">#F8FAF4</Color>
+  <Color x:Key="Jade100Color">#F1F6E7</Color>
+  <Color x:Key="Jade200Color">#E2EBD5</Color>
+  <Color x:Key="Jade300Color">#CDDDBB</Color>
+  <Color x:Key="Jade400Color">#ADC59A</Color>
+  <Color x:Key="Jade500Color">#89A87C</Color>
+  <Color x:Key="Jade600Color">#5D7B57</Color>
+  <Color x:Key="Jade700Color">#496A4B</Color>
+  <Color x:Key="Jade800Color">#335039</Color>
+  <Color x:Key="Jade900Color">#22382B</Color>
+
+  <!-- Sage 灰玉：Jade 的低饱和版本（饱和度约减半），只用于侧栏大面积底色，避免“泛绿”。 -->
+  <Color x:Key="Sage100Color">#F2F4EE</Color>
+  <Color x:Key="Sage200Color">#E6EAE1</Color>
+  <Color x:Key="Sage300Color">#D9E2D0</Color>
+  <Color x:Key="Sage400Color">#C7D2BD</Color>
+
+  <!-- Neutral 中性：浅阶带极轻暖绿，深阶近纯灰 -->
+  <Color x:Key="Neutral0Color">#FFFFFF</Color>
+  <Color x:Key="Neutral50Color">#F8F9F6</Color>
+  <Color x:Key="Neutral100Color">#F1F3EE</Color>
+  <Color x:Key="Neutral200Color">#E3E7E0</Color>
+  <Color x:Key="Neutral300Color">#CDD2C9</Color>
+  <Color x:Key="Neutral400Color">#9CA39A</Color>
+  <Color x:Key="Neutral500Color">#737A72</Color>
+  <Color x:Key="Neutral600Color">#575D57</Color>
+  <Color x:Key="Neutral700Color">#3E433E</Color>
+  <Color x:Key="Neutral800Color">#2A2E2A</Color>
+  <Color x:Key="Neutral900Color">#181B19</Color>
+
+  <!-- Blue 操作 / 信息（沿用现值） -->
+  <Color x:Key="Blue50Color">#EFF6FF</Color>
+  <Color x:Key="Blue100Color">#DBEAFE</Color>
+  <Color x:Key="Blue200Color">#BFDBFE</Color>
+  <Color x:Key="Blue300Color">#93C5FD</Color>
+  <Color x:Key="Blue600Color">#1769E0</Color>
+  <Color x:Key="Blue700Color">#145BC1</Color>
+  <Color x:Key="Blue800Color">#104A9F</Color>
+
+  <!-- Emerald 成功：偏蓝翠绿，与玉色拉开色相 -->
+  <Color x:Key="Emerald50Color">#ECFDF5</Color>
+  <Color x:Key="Emerald200Color">#A7F3D0</Color>
+  <Color x:Key="Emerald600Color">#059669</Color>
+  <Color x:Key="Emerald700Color">#047857</Color>
+
+  <!-- Amber 警告 -->
+  <Color x:Key="Amber50Color">#FFFBEB</Color>
+  <Color x:Key="Amber200Color">#FDE68A</Color>
+  <Color x:Key="Amber500Color">#F59E0B</Color>
+  <Color x:Key="Amber700Color">#B45309</Color>
+
+  <!-- Red 危险 -->
+  <Color x:Key="Red50Color">#FEF2F2</Color>
+  <Color x:Key="Red100Color">#FEE2E2</Color>
+  <Color x:Key="Red200Color">#FECACA</Color>
+  <Color x:Key="Red600Color">#DC2626</Color>
+  <Color x:Key="Red700Color">#B91C1C</Color>
+
+  <!-- ===== 2. 语义 Token ===== -->
+
+  <!-- 背景 -->
+  <SolidColorBrush x:Key="BgAppBrush" Color="{StaticResource Sage100Color}" />
+  <!-- 内容区比卡片深一档，白卡片才能浮起来；Neutral50 太接近白，会让页面发“素”。 -->
+  <SolidColorBrush x:Key="BgContentBrush" Color="{StaticResource Neutral100Color}" />
+  <SolidColorBrush x:Key="BgSurfaceBrush" Color="{StaticResource Neutral0Color}" />
+  <SolidColorBrush x:Key="BgSurfaceSubtleBrush" Color="{StaticResource Neutral50Color}" />
+  <SolidColorBrush x:Key="BgHoverBrush" Color="{StaticResource Neutral100Color}" />
+  <SolidColorBrush x:Key="BgPressedBrush" Color="{StaticResource Neutral200Color}" />
+  <SolidColorBrush x:Key="BgDisabledBrush" Color="{StaticResource Neutral100Color}" />
+  <SolidColorBrush x:Key="BgSelectedBrush">#EAF2ED</SolidColorBrush>
+
+  <!-- 文字（Fg 前缀，避免覆盖 HeronTheme 现有 Text* 名称） -->
+  <SolidColorBrush x:Key="FgPrimaryBrush" Color="{StaticResource Neutral900Color}" />
+  <SolidColorBrush x:Key="FgDefaultBrush" Color="{StaticResource Neutral700Color}" />
+  <SolidColorBrush x:Key="FgSecondaryBrush" Color="{StaticResource Neutral600Color}" />
+  <SolidColorBrush x:Key="FgMetaBrush" Color="{StaticResource Neutral500Color}" />
+  <SolidColorBrush x:Key="FgDisabledBrush" Color="{StaticResource Neutral400Color}" />
+  <SolidColorBrush x:Key="FgOnJadeBrush" Color="{StaticResource Jade900Color}" />
+  <SolidColorBrush x:Key="FgOnAccentBrush">#FFFFFF</SolidColorBrush>
+  <SolidColorBrush x:Key="FgLinkBrush">#28745B</SolidColorBrush>
+
+  <SolidColorBrush x:Key="DividerBrush">#EEF2F6</SolidColorBrush>
+
+  <!-- 边框 -->
+  <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource Neutral100Color}" />
+  <SolidColorBrush x:Key="BorderDefaultBrush" Color="{StaticResource Neutral200Color}" />
+  <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource Neutral300Color}" />
+  <SolidColorBrush x:Key="BorderFocusBrush">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="BorderSelectedBrush">#518B72</SolidColorBrush>
+
+  <!-- 操作（蓝） -->
+  <SolidColorBrush x:Key="AccentBrush">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentHoverBrush">#22664F</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentPressedBrush">#1C5542</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentSubtleBrush">#EAF2ED</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentSubtleHoverBrush">#DBEADF</SolidColorBrush>
+
+  <!-- 品牌 / 导航：大面积用 Sage 灰玉降饱和；选中比悬停再深一档，并配 Jade 深色文字与竖条做锚点。 -->
+  <SolidColorBrush x:Key="NavBgBrush" Color="{StaticResource Sage100Color}" />
+  <SolidColorBrush x:Key="NavHoverBgBrush" Color="{StaticResource Sage200Color}" />
+  <SolidColorBrush x:Key="NavSelectedBgBrush" Color="{StaticResource Sage300Color}" />
+  <SolidColorBrush x:Key="NavIndicatorBrush" Color="{StaticResource Jade700Color}" />
+  <SolidColorBrush x:Key="NavFgBrush" Color="{StaticResource Neutral600Color}" />
+  <SolidColorBrush x:Key="NavSelectedFgBrush" Color="{StaticResource Jade900Color}" />
+  <SolidColorBrush x:Key="NavIconBrush" Color="{StaticResource Jade600Color}" />
+  <SolidColorBrush x:Key="NavSelectedIconBrush" Color="{StaticResource Jade700Color}" />
+  <SolidColorBrush x:Key="BrandDividerBrush" Color="{StaticResource Jade300Color}" />
+
+  <!-- 状态：Fg 文字 / Icon 图形 / Bg 浅底 / Border 描边 / Solid 实心徽标底 -->
+  <SolidColorBrush x:Key="SuccessFgBrush" Color="{StaticResource Emerald700Color}" />
+  <SolidColorBrush x:Key="SuccessIconBrush" Color="{StaticResource Emerald600Color}" />
+  <SolidColorBrush x:Key="SuccessBgBrush" Color="{StaticResource Emerald50Color}" />
+  <SolidColorBrush x:Key="SuccessBorderBrush" Color="{StaticResource Emerald200Color}" />
+  <SolidColorBrush x:Key="SuccessSolidBrush" Color="{StaticResource Emerald700Color}" />
+
+  <SolidColorBrush x:Key="InfoFgBrush" Color="{StaticResource Blue600Color}" />
+  <SolidColorBrush x:Key="InfoIconBrush" Color="{StaticResource Blue600Color}" />
+  <SolidColorBrush x:Key="InfoBgBrush" Color="{StaticResource Blue50Color}" />
+  <SolidColorBrush x:Key="InfoBorderBrush" Color="{StaticResource Blue200Color}" />
+  <SolidColorBrush x:Key="InfoSolidBrush" Color="{StaticResource Blue600Color}" />
+
+  <SolidColorBrush x:Key="WarningFgBrush" Color="{StaticResource Amber700Color}" />
+  <SolidColorBrush x:Key="WarningIconBrush" Color="{StaticResource Amber500Color}" />
+  <SolidColorBrush x:Key="WarningBgBrush" Color="{StaticResource Amber50Color}" />
+  <SolidColorBrush x:Key="WarningBorderBrush" Color="{StaticResource Amber200Color}" />
+  <SolidColorBrush x:Key="WarningSolidBrush" Color="{StaticResource Amber700Color}" />
+
+  <SolidColorBrush x:Key="DangerFgBrush" Color="{StaticResource Red700Color}" />
+  <SolidColorBrush x:Key="DangerIconBrush" Color="{StaticResource Red600Color}" />
+  <SolidColorBrush x:Key="DangerBgBrush" Color="{StaticResource Red50Color}" />
+  <SolidColorBrush x:Key="DangerBgHoverBrush" Color="{StaticResource Red100Color}" />
+  <SolidColorBrush x:Key="DangerBorderBrush" Color="{StaticResource Red200Color}" />
+  <SolidColorBrush x:Key="DangerSolidBrush" Color="{StaticResource Red600Color}" />
+
+  <SolidColorBrush x:Key="NeutralStatusFgBrush" Color="{StaticResource Neutral600Color}" />
+  <SolidColorBrush x:Key="NeutralStatusIconBrush" Color="{StaticResource Neutral400Color}" />
+  <SolidColorBrush x:Key="NeutralStatusBgBrush" Color="{StaticResource Neutral100Color}" />
+  <SolidColorBrush x:Key="NeutralStatusBorderBrush" Color="{StaticResource Neutral200Color}" />
+
+  <!-- 类别：只表达“是哪一类”，不表达状态好坏。
+       开发 = 石板靛，美术 = 玉色；类别色保持独立，不跟随操作色替换。
+       用法：列表左侧 3px 色条 + 图标 + 浅底标签；不得用于按钮或状态。 -->
+  <Color x:Key="CategoryCode50Color">#F1F2F9</Color>
+  <Color x:Key="CategoryCode200Color">#D3D6EA</Color>
+  <Color x:Key="CategoryCode500Color">#6B72A8</Color>
+  <Color x:Key="CategoryCode700Color">#454B7E</Color>
+  <SolidColorBrush x:Key="CategoryCodeBgBrush" Color="{StaticResource CategoryCode50Color}" />
+  <SolidColorBrush x:Key="CategoryCodeBorderBrush" Color="{StaticResource CategoryCode200Color}" />
+  <SolidColorBrush x:Key="CategoryCodeStripeBrush" Color="{StaticResource CategoryCode500Color}" />
+  <SolidColorBrush x:Key="CategoryCodeFgBrush" Color="{StaticResource CategoryCode700Color}" />
+  <SolidColorBrush x:Key="CategoryArtBgBrush" Color="{StaticResource Jade50Color}" />
+  <SolidColorBrush x:Key="CategoryArtBorderBrush" Color="{StaticResource Jade300Color}" />
+  <SolidColorBrush x:Key="CategoryArtStripeBrush" Color="{StaticResource Jade600Color}" />
+  <SolidColorBrush x:Key="CategoryArtFgBrush" Color="{StaticResource Jade800Color}" />
+
+  <!-- ===== 3. 组件 Token（自 HeronTheme.axaml Styles.Resources 迁入，键名不变） ===== -->
+
+  <!-- 文字 -->
+  <SolidColorBrush x:Key="TextPrimaryBrush">#172033</SolidColorBrush>
+  <SolidColorBrush x:Key="TextDefaultBrush">#334155</SolidColorBrush>
+  <SolidColorBrush x:Key="TextSecondaryBrush">#64748B</SolidColorBrush>
+  <SolidColorBrush x:Key="TextDisabledBrush">#94A3B8</SolidColorBrush>
+  <SolidColorBrush x:Key="TextLinkBrush">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="TextSuccessBrush">#15803D</SolidColorBrush>
+  <SolidColorBrush x:Key="TextWarningBrush">#B45309</SolidColorBrush>
+  <SolidColorBrush x:Key="TextDangerBrush">#DC2626</SolidColorBrush>
+
+  <!-- 按钮 -->
+  <SolidColorBrush x:Key="ButtonPrimaryBrush">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPrimaryHoverBrush">#22664F</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPrimaryPressedBrush">#1C5542</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonSuccessBrush">#16A34A</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonSuccessHoverBrush">#15803D</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonSuccessPressedBrush">#166534</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralBrush">#FFFFFF</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralHoverBrush">#F1F5F9</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralPressedBrush">#E2E8F0</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralBorderBrush" Color="{DynamicResource Neutral300Color}" />
+  <SolidColorBrush x:Key="ButtonQuietBrush">#F8FAFC</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerBrush">#FEF2F2</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerHoverBrush">#FEE2E2</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerPressedBrush">#FECACA</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerBorderBrush" Color="{DynamicResource Red200Color}" />
+  <SolidColorBrush x:Key="ButtonPauseBrush">#FFF7ED</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPauseHoverBrush">#FFEDD5</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPausePressedBrush">#FED7AA</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPauseForegroundBrush">#C2410C</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDisabledBrush">#F1F5F9</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDisabledBorderBrush" Color="{DynamicResource Neutral200Color}" />
+  <SolidColorBrush x:Key="ButtonFocusBrush">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="ContentSplitterBrush" Color="{DynamicResource Neutral200Color}" />
+  <SolidColorBrush x:Key="ContentSplitterHoverBrush" Color="{DynamicResource Blue100Color}" />
+
+  <!-- 标题栏明暗切换 Switch（轨道 + 滑块，两种主色 token × 明暗 = 4 键） -->
+  <SolidColorBrush x:Key="ThemeSwitchOnBrush" Color="{StaticResource Jade600Color}" />
+  <SolidColorBrush x:Key="ThemeSwitchOnKnobBrush" Color="{StaticResource Jade50Color}" />
+  <SolidColorBrush x:Key="ThemeSwitchOffBrush" Color="{StaticResource Jade300Color}" />
+  <SolidColorBrush x:Key="ThemeSwitchOffKnobBrush" Color="{StaticResource Jade600Color}" />
+
+  <!-- 组件级内联色值键（HeronTheme 样式改引这些键） -->
+  <SolidColorBrush x:Key="CardBgBrush">#FFFFFF</SolidColorBrush>
+  <SolidColorBrush x:Key="FieldLabelFgBrush">#475569</SolidColorBrush>
+  <SolidColorBrush x:Key="DropAreaBgBrush">#F2F7EC</SolidColorBrush>
+  <SolidColorBrush x:Key="LogPanelBgBrush">#F8FAFC</SolidColorBrush>
+  <SolidColorBrush x:Key="LogFilterCheckedBgBrush">#EAF2ED</SolidColorBrush>
+  <SolidColorBrush x:Key="LogFilterCheckedFgBrush">#28745B</SolidColorBrush>
+  <SolidColorBrush x:Key="ComboBoxEmptyBgBrush">#FAFBFC</SolidColorBrush>
+  <!-- 页面输入框/子面板底色（Light 与原页面硬编码 #F8FAFC/#FAFBFD 一致，Dark 为墨玉取值） -->
+  <SolidColorBrush x:Key="InputBgBrush">#F8FAFC</SolidColorBrush>
+  <SolidColorBrush x:Key="SubPanelBgBrush">#FAFBFD</SolidColorBrush>
+  <SolidColorBrush x:Key="CalloutBgBrush">#F4F8FC</SolidColorBrush>
+  <SolidColorBrush x:Key="WarningBadgeBgBrush">#FEF3C7</SolidColorBrush>
+
+  <!-- 输入区底色固定，悬停与焦点通过边框反馈。TextBox 模板状态由 HeronTheme 保留控件自定义底色。 -->
+  <StaticResource x:Key="TextBoxDefaultBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="TextBoxDefaultBorderBrush" ResourceKey="BorderDefaultBrush" />
+  <StaticResource x:Key="TextBoxPointeroverBorderBrush" ResourceKey="BorderStrongBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPointeroverBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorFocusBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPressedBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderBrush" ResourceKey="BorderDefaultBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPointeroverBorderBrush" ResourceKey="BorderStrongBrush" />
+
+  <!-- Semi 交互资源适配：模板按组件键取色，不能只改上游 SemiColorPrimary。 -->
+  <StaticResource x:Key="TextBoxFocusBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TextBoxBorderedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonUncheckIconPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonUncheckIconPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDefaultBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPointeroverBackground" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPressedBackground" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDisabledBackground" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDefaultBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDisabledBorderBrush" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="RadioButtonButtonCheckedForeground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckDefaultBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxPointeroverBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDefaultBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDefaultBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPointeroverBackground" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPressedBackground" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDisabledBackground" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDisabledBorderBrush" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedDisabledBorderBrush" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="TabItemLinePipeSelectedBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TabItemLineHeaderSelectedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="TabItemButtonHeaderSelectedForeground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TabItemButtonHeaderSelectedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="ComboBoxSelectorFocusBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPressedBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="ComboBoxItemSelectedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="ComboBoxItemSelectedPointeroverBackground" ResourceKey="AccentSubtleHoverBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderedFocusBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderedPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="ButtonDefaultPrimaryForeground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="ButtonInputInnerPointeroverForeground" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="ButtonInputInnerPressedForeground" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxGlyphFill" ResourceKey="FgOnAccentBrush" />
+  <StaticResource x:Key="RadioButtonCheckGlyphFill" ResourceKey="FgOnAccentBrush" />
+  <StaticResource x:Key="TextBoxSelectionBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TextBoxSelectionForeground" ResourceKey="FgOnAccentBrush" />
+    </ResourceDictionary>
+
+    <!-- ===== Dark 墨玉：Gallery 确认的暖灰层次，绿色仅用于操作与焦点 ===== -->
+    <ResourceDictionary x:Key="Dark">
+  <Thickness x:Key="CardFrameThickness">1</Thickness>
+  <Thickness x:Key="QuietContainerFrameThickness">0</Thickness>
+  <FontWeight x:Key="ContentItemFontWeight">Normal</FontWeight>
+  <FontWeight x:Key="SectionTitleFontWeight">Medium</FontWeight>
+  <SolidColorBrush x:Key="AnnouncementLabelBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="AnnouncementSurfaceBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="AnnouncementTextBrush">#B8B8B2</SolidColorBrush>
+  <FontWeight x:Key="ChromeLabelWeight">Normal</FontWeight>
+  <SolidColorBrush x:Key="ChromeSecondaryBrush">#A5A5A0</SolidColorBrush>
+  <FontWeight x:Key="NavActiveItemWeight">Medium</FontWeight>
+  <SolidColorBrush x:Key="NavItemTextBrush">#B8B8B2</SolidColorBrush>
+  <FontWeight x:Key="NavItemWeight">Normal</FontWeight>
+  <SolidColorBrush x:Key="StatusActionBackground">#198F4F</SolidColorBrush>
+  <SolidColorBrush x:Key="StatusActionForeground">#E6E6E2</SolidColorBrush>
+
+  <Thickness x:Key="ContentButtonBorderThickness">0</Thickness>
+  <FontWeight x:Key="ButtonEmphasisFontWeight">Medium</FontWeight>
+  <FontWeight x:Key="ButtonEmphasisLargeFontWeight">Medium</FontWeight>
+  <x:Boolean x:Key="ButtonEffectsVisible">False</x:Boolean>
+
+  <!-- Semi 默认按钮也遵循无描边、无阴影的平面样式。 -->
+  <Thickness x:Key="ButtonBorderThickness">0</Thickness>
+  <SolidColorBrush x:Key="ButtonDefaultBorderBrush">Transparent</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDefaultPointeroverBorderBrush">Transparent</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDefaultPressedBorderBrush">Transparent</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDefaultDisabledBorderBrush">Transparent</SolidColorBrush>
+  <!-- ===== 1. 原始色阶：中性暖灰；Jade 仅用于类别色 ===== -->
+
+  <!-- Jade 玉色：深色反转，600-800 变亮作为品牌强调，900 最亮用于深底文字 -->
+  <Color x:Key="Jade50Color">#1D231C</Color>
+  <Color x:Key="Jade100Color">#20261F</Color>
+  <Color x:Key="Jade200Color">#232B21</Color>
+  <Color x:Key="Jade300Color">#2A3328</Color>
+  <Color x:Key="Jade400Color">#343D30</Color>
+  <Color x:Key="Jade500Color">#414B3D</Color>
+  <Color x:Key="Jade600Color">#556A4C</Color>
+  <Color x:Key="Jade700Color">#6E8760</Color>
+  <Color x:Key="Jade800Color">#8FBE7F</Color>
+  <Color x:Key="Jade900Color">#A9CF9B</Color>
+
+  <!-- Sage 灰玉：侧栏大面积底色（暗） -->
+  <Color x:Key="Sage100Color">#252524</Color>
+  <Color x:Key="Sage200Color">#2C2C2A</Color>
+  <Color x:Key="Sage300Color">#40403D</Color>
+  <Color x:Key="Sage400Color">#4A4A46</Color>
+
+  <!-- Neutral 中性：深底浅字反转 -->
+  <Color x:Key="Neutral0Color">#2C2C2A</Color>
+  <Color x:Key="Neutral50Color">#252524</Color>
+  <Color x:Key="Neutral100Color">#242423</Color>
+  <Color x:Key="Neutral200Color">#41413D</Color>
+  <Color x:Key="Neutral300Color">#75756F</Color>
+  <Color x:Key="Neutral400Color">#75756F</Color>
+  <Color x:Key="Neutral500Color">#92928C</Color>
+  <Color x:Key="Neutral600Color">#B8B8B2</Color>
+  <Color x:Key="Neutral700Color">#B8B8B2</Color>
+  <Color x:Key="Neutral800Color">#D8D8D4</Color>
+  <Color x:Key="Neutral900Color">#EEEEEC</Color>
+
+  <!-- Blue 操作 / 信息 -->
+  <Color x:Key="Blue50Color">#16202E</Color>
+  <Color x:Key="Blue100Color">#1B2735</Color>
+  <Color x:Key="Blue200Color">#274467</Color>
+  <Color x:Key="Blue300Color">#4A7FD0</Color>
+  <Color x:Key="Blue600Color">#4E8FE8</Color>
+  <Color x:Key="Blue700Color">#66A2F0</Color>
+  <Color x:Key="Blue800Color">#3E7BD6</Color>
+
+  <!-- Emerald 成功 -->
+  <Color x:Key="Emerald50Color">#12271E</Color>
+  <Color x:Key="Emerald200Color">#1F4D38</Color>
+  <Color x:Key="Emerald600Color">#34D399</Color>
+  <Color x:Key="Emerald700Color">#4ADE80</Color>
+
+  <!-- Amber 警告 -->
+  <Color x:Key="Amber50Color">#2B2110</Color>
+  <Color x:Key="Amber200Color">#57431A</Color>
+  <Color x:Key="Amber500Color">#F59E0B</Color>
+  <Color x:Key="Amber700Color">#FBBF24</Color>
+
+  <!-- Red 危险 -->
+  <Color x:Key="Red50Color">#2C1517</Color>
+  <Color x:Key="Red100Color">#3A1A1D</Color>
+  <Color x:Key="Red200Color">#5C2B2F</Color>
+  <Color x:Key="Red600Color">#F87171</Color>
+  <Color x:Key="Red700Color">#F87171</Color>
+
+  <!-- ===== 2. 语义 Token ===== -->
+
+  <!-- 背景 -->
+  <SolidColorBrush x:Key="BgAppBrush">#252524</SolidColorBrush>
+  <!-- 内容区比卡片深一档，卡片才能浮起来 -->
+  <SolidColorBrush x:Key="BgContentBrush">#242423</SolidColorBrush>
+  <SolidColorBrush x:Key="BgSurfaceBrush">#2C2C2A</SolidColorBrush>
+  <SolidColorBrush x:Key="BgSurfaceSubtleBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="BgHoverBrush">#40403D</SolidColorBrush>
+  <SolidColorBrush x:Key="BgPressedBrush">#464642</SolidColorBrush>
+  <SolidColorBrush x:Key="BgDisabledBrush">#353533</SolidColorBrush>
+  <SolidColorBrush x:Key="BgSelectedBrush">#40403D</SolidColorBrush>
+
+  <!-- 暖灰底上的文字层级；辅助文字与选中底保持至少 4.5:1。 -->
+  <SolidColorBrush x:Key="FgPrimaryBrush">#EEEEEC</SolidColorBrush>
+  <SolidColorBrush x:Key="FgDefaultBrush">#D8D8D4</SolidColorBrush>
+  <SolidColorBrush x:Key="FgSecondaryBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="FgMetaBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="FgDisabledBrush">#92928C</SolidColorBrush>
+  <SolidColorBrush x:Key="FgOnJadeBrush">#EEEEEC</SolidColorBrush>
+  <SolidColorBrush x:Key="FgOnAccentBrush">#E6E6E2</SolidColorBrush>
+  <SolidColorBrush x:Key="FgLinkBrush">#92C5A7</SolidColorBrush>
+
+  <SolidColorBrush x:Key="DividerBrush">#373734</SolidColorBrush>
+
+  <!-- 边框 -->
+  <SolidColorBrush x:Key="BorderSubtleBrush">#2D2D2A</SolidColorBrush>
+  <SolidColorBrush x:Key="BorderDefaultBrush">#3B3B38</SolidColorBrush>
+  <SolidColorBrush x:Key="BorderStrongBrush">#75756F</SolidColorBrush>
+  <SolidColorBrush x:Key="BorderFocusBrush">#07C160</SolidColorBrush>
+  <SolidColorBrush x:Key="BorderSelectedBrush">#07C160</SolidColorBrush>
+
+  <!-- 小面积强调保留 #07C160；实心按钮使用更深的绿底、灰白常规字重。 -->
+  <SolidColorBrush x:Key="AccentBrush">#07C160</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentHoverBrush">#0DB064</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentPressedBrush">#0CA660</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentSubtleBrush">#40403D</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentSubtleHoverBrush">#464642</SolidColorBrush>
+
+  <!-- 品牌 / 导航 -->
+  <SolidColorBrush x:Key="NavBgBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="NavHoverBgBrush">#2C2C2A</SolidColorBrush>
+  <SolidColorBrush x:Key="NavSelectedBgBrush">#40403D</SolidColorBrush>
+  <SolidColorBrush x:Key="NavIndicatorBrush">#07C160</SolidColorBrush>
+  <SolidColorBrush x:Key="NavFgBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="NavSelectedFgBrush">#EEEEEC</SolidColorBrush>
+  <SolidColorBrush x:Key="NavIconBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="NavSelectedIconBrush">#EEEEEC</SolidColorBrush>
+  <SolidColorBrush x:Key="BrandDividerBrush">#41413D</SolidColorBrush>
+
+  <!-- 状态 -->
+  <SolidColorBrush x:Key="SuccessFgBrush" Color="{StaticResource Emerald700Color}" />
+  <SolidColorBrush x:Key="SuccessIconBrush" Color="{StaticResource Emerald600Color}" />
+  <SolidColorBrush x:Key="SuccessBgBrush" Color="{StaticResource Emerald50Color}" />
+  <SolidColorBrush x:Key="SuccessBorderBrush" Color="{StaticResource Emerald200Color}" />
+  <SolidColorBrush x:Key="SuccessSolidBrush" Color="{StaticResource Emerald700Color}" />
+
+  <SolidColorBrush x:Key="InfoFgBrush" Color="{StaticResource Blue600Color}" />
+  <SolidColorBrush x:Key="InfoIconBrush" Color="{StaticResource Blue600Color}" />
+  <SolidColorBrush x:Key="InfoBgBrush" Color="{StaticResource Blue50Color}" />
+  <SolidColorBrush x:Key="InfoBorderBrush" Color="{StaticResource Blue200Color}" />
+  <SolidColorBrush x:Key="InfoSolidBrush" Color="{StaticResource Blue600Color}" />
+
+  <SolidColorBrush x:Key="WarningFgBrush" Color="{StaticResource Amber700Color}" />
+  <SolidColorBrush x:Key="WarningIconBrush" Color="{StaticResource Amber500Color}" />
+  <SolidColorBrush x:Key="WarningBgBrush" Color="{StaticResource Amber50Color}" />
+  <SolidColorBrush x:Key="WarningBorderBrush" Color="{StaticResource Amber200Color}" />
+  <SolidColorBrush x:Key="WarningSolidBrush" Color="{StaticResource Amber700Color}" />
+
+  <SolidColorBrush x:Key="DangerFgBrush" Color="{StaticResource Red700Color}" />
+  <SolidColorBrush x:Key="DangerIconBrush" Color="{StaticResource Red600Color}" />
+  <SolidColorBrush x:Key="DangerBgBrush" Color="{StaticResource Red50Color}" />
+  <SolidColorBrush x:Key="DangerBgHoverBrush" Color="{StaticResource Red100Color}" />
+  <SolidColorBrush x:Key="DangerBorderBrush" Color="{StaticResource Red200Color}" />
+  <SolidColorBrush x:Key="DangerSolidBrush" Color="{StaticResource Red600Color}" />
+
+  <SolidColorBrush x:Key="NeutralStatusFgBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="NeutralStatusIconBrush">#92928C</SolidColorBrush>
+  <SolidColorBrush x:Key="NeutralStatusBgBrush">#30302E</SolidColorBrush>
+  <SolidColorBrush x:Key="NeutralStatusBorderBrush">#373734</SolidColorBrush>
+
+  <!-- 类别：开发 = 石板靛，美术 = 玉色（复用 JadeDark 对应阶） -->
+  <Color x:Key="CategoryCode50Color">#1E2330</Color>
+  <Color x:Key="CategoryCode200Color">#333B54</Color>
+  <Color x:Key="CategoryCode500Color">#8B93C9</Color>
+  <Color x:Key="CategoryCode700Color">#B9C0E8</Color>
+  <SolidColorBrush x:Key="CategoryCodeBgBrush" Color="{StaticResource CategoryCode50Color}" />
+  <SolidColorBrush x:Key="CategoryCodeBorderBrush" Color="{StaticResource CategoryCode200Color}" />
+  <SolidColorBrush x:Key="CategoryCodeStripeBrush" Color="{StaticResource CategoryCode500Color}" />
+  <SolidColorBrush x:Key="CategoryCodeFgBrush" Color="{StaticResource CategoryCode700Color}" />
+  <SolidColorBrush x:Key="CategoryArtBgBrush" Color="{StaticResource Jade50Color}" />
+  <SolidColorBrush x:Key="CategoryArtBorderBrush" Color="{StaticResource Jade300Color}" />
+  <SolidColorBrush x:Key="CategoryArtStripeBrush" Color="{StaticResource Jade600Color}" />
+  <SolidColorBrush x:Key="CategoryArtFgBrush" Color="{StaticResource Jade800Color}" />
+
+  <!-- ===== 3. 组件 Token（与 Light 分支同名键，墨玉取值） ===== -->
+
+  <!-- 文字 -->
+  <SolidColorBrush x:Key="TextPrimaryBrush">#EEEEEC</SolidColorBrush>
+  <SolidColorBrush x:Key="TextDefaultBrush">#D8D8D4</SolidColorBrush>
+  <SolidColorBrush x:Key="TextSecondaryBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="TextDisabledBrush">#92928C</SolidColorBrush>
+  <SolidColorBrush x:Key="TextLinkBrush">#92C5A7</SolidColorBrush>
+  <SolidColorBrush x:Key="TextSuccessBrush">#4ADE80</SolidColorBrush>
+  <SolidColorBrush x:Key="TextWarningBrush">#FBBF24</SolidColorBrush>
+  <SolidColorBrush x:Key="TextDangerBrush">#F87171</SolidColorBrush>
+
+  <!-- 按钮 -->
+  <SolidColorBrush x:Key="ButtonPrimaryBrush">#198F4F</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPrimaryHoverBrush">#168046</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPrimaryPressedBrush">#14763F</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonSuccessBrush">#198F4F</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonSuccessHoverBrush">#168046</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonSuccessPressedBrush">#14763F</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralBrush">#40403D</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralHoverBrush">#4A4A46</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralPressedBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonNeutralBorderBrush">#85857F</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonQuietBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerBrush">#2C1517</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerHoverBrush">#3A1A1D</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerPressedBrush">#5C2B2F</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDangerBorderBrush" Color="{DynamicResource Red200Color}" />
+  <SolidColorBrush x:Key="ButtonPauseBrush">#2B2110</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPauseHoverBrush">#3A2C0E</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPausePressedBrush">#493614</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonPauseForegroundBrush">#FBBF24</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDisabledBrush">#353533</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonDisabledBorderBrush">#4A4A46</SolidColorBrush>
+  <SolidColorBrush x:Key="ButtonFocusBrush">#07C160</SolidColorBrush>
+  <SolidColorBrush x:Key="ContentSplitterBrush">#41413D</SolidColorBrush>
+  <SolidColorBrush x:Key="ContentSplitterHoverBrush">#40403D</SolidColorBrush>
+
+  <!-- 标题栏明暗切换 Switch（墨玉取值：轨道暗主色，滑块提亮） -->
+  <SolidColorBrush x:Key="ThemeSwitchOnBrush">#07C160</SolidColorBrush>
+  <SolidColorBrush x:Key="ThemeSwitchOnKnobBrush">#FFFFFF</SolidColorBrush>
+  <SolidColorBrush x:Key="ThemeSwitchOffBrush">#40403D</SolidColorBrush>
+  <SolidColorBrush x:Key="ThemeSwitchOffKnobBrush">#B8B8B2</SolidColorBrush>
+
+  <!-- 组件级内联色值键（墨玉取值） -->
+  <SolidColorBrush x:Key="CardBgBrush">#2A2A28</SolidColorBrush>
+  <SolidColorBrush x:Key="FieldLabelFgBrush">#B8B8B2</SolidColorBrush>
+  <SolidColorBrush x:Key="DropAreaBgBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="LogPanelBgBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="LogFilterCheckedBgBrush">#40403D</SolidColorBrush>
+  <SolidColorBrush x:Key="LogFilterCheckedFgBrush">#EEEEEC</SolidColorBrush>
+  <SolidColorBrush x:Key="ComboBoxEmptyBgBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="InputBgBrush">#252524</SolidColorBrush>
+  <SolidColorBrush x:Key="SubPanelBgBrush">#242423</SolidColorBrush>
+  <SolidColorBrush x:Key="CalloutBgBrush">#30302E</SolidColorBrush>
+  <SolidColorBrush x:Key="WarningBadgeBgBrush">#3A2C0E</SolidColorBrush>
+
+  <StaticResource x:Key="ButtonDefaultBackground" ResourceKey="ButtonNeutralBrush" />
+  <StaticResource x:Key="ButtonDefaultPointeroverBackground" ResourceKey="ButtonNeutralHoverBrush" />
+  <StaticResource x:Key="ButtonDefaultPressedBackground" ResourceKey="ButtonNeutralPressedBrush" />
+  <!-- 输入区底色固定，悬停与焦点通过边框反馈。TextBox 模板状态由 HeronTheme 保留控件自定义底色。 -->
+  <StaticResource x:Key="TextBoxDefaultBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="TextBoxDefaultBorderBrush" ResourceKey="BorderStrongBrush" />
+  <StaticResource x:Key="TextBoxPointeroverBorderBrush" ResourceKey="BorderStrongBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPointeroverBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorFocusBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPressedBackground" ResourceKey="InputBgBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderBrush" ResourceKey="BorderStrongBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPointeroverBorderBrush" ResourceKey="BorderStrongBrush" />
+
+  <!-- Semi 交互资源适配：模板按组件键取色，不能只改上游 SemiColorPrimary。 -->
+  <StaticResource x:Key="TextBoxFocusBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TextBoxBorderedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonUncheckIconPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonUncheckIconPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDefaultBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPointeroverBackground" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPressedBackground" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDisabledBackground" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDefaultBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="RadioButtonCheckIconDisabledBorderBrush" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="RadioButtonButtonCheckedForeground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckDefaultBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="RadioButtonCardCheckPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxPointeroverBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDefaultBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDefaultBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPointeroverBackground" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPressedBackground" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxCheckedPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDisabledBackground" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="CheckBoxCheckedDisabledBorderBrush" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedDisabledBorderBrush" ResourceKey="BgDisabledBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="CheckBoxCardCheckedPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="TabItemLinePipeSelectedBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TabItemLineHeaderSelectedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="TabItemButtonHeaderSelectedForeground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TabItemButtonHeaderSelectedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="ComboBoxSelectorFocusBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="ComboBoxSelectorPressedBorderBrush" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="ComboBoxItemSelectedBackground" ResourceKey="AccentSubtleBrush" />
+  <StaticResource x:Key="ComboBoxItemSelectedPointeroverBackground" ResourceKey="AccentSubtleHoverBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderedPointeroverBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderedFocusBorderBrush" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="ComboBoxSelectorBorderedPressedBorderBrush" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="ButtonDefaultPrimaryForeground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="ButtonInputInnerPointeroverForeground" ResourceKey="AccentHoverBrush" />
+  <StaticResource x:Key="ButtonInputInnerPressedForeground" ResourceKey="AccentPressedBrush" />
+  <StaticResource x:Key="CheckBoxGlyphFill" ResourceKey="FgOnAccentBrush" />
+  <StaticResource x:Key="RadioButtonCheckGlyphFill" ResourceKey="FgOnAccentBrush" />
+  <StaticResource x:Key="TextBoxSelectionBackground" ResourceKey="AccentBrush" />
+  <StaticResource x:Key="TextBoxSelectionForeground" ResourceKey="FgOnAccentBrush" />
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

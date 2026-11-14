@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.Pregel.Automation</PackageId>
+    <AssemblyName>Heron.Pregel.Automation</AssemblyName>
+    <RootNamespace>Heron.Pregel.Automation</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Reusable durable graph execution: Pregel.Automation.</Description>
+
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Pregel/Heron.Pregel.csproj" />
+    <ProjectReference Include="../Pregel.Scripting/Heron.Pregel.Scripting.csproj" />
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+</Project>

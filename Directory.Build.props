@@ -1,0 +1,25 @@
+<Project>
+  <Import Project="Version.props" />
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <DebugType Condition="'$(Configuration)' != 'Release'">portable</DebugType>
+    <DebugType Condition="'$(Configuration)' == 'Release'">embedded</DebugType>
+    <!-- Debug keeps physical source paths for local debugging and XAML hot reload. -->
+    <PathMap Condition="'$(Configuration)' == 'Release' and '$(PathMap)' == ''">$(MSBuildThisFileDirectory)=/_/heron/</PathMap>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Authors>ornithologist</Authors>
+    <RepositoryType>git</RepositoryType>
+    <!-- Libraries opt in explicitly; samples and build tools are never packages by default. -->
+    <IsPackable>false</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+</Project>

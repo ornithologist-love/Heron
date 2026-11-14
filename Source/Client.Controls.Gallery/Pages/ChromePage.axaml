@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             xmlns:chrome="using:Heron.ClientControls.Chrome"
+             x:Class="Heron.ClientControls.Gallery.Pages.ChromePage">
+  <ScrollViewer>
+    <StackPanel Margin="24,20" Spacing="18" MaxWidth="860" HorizontalAlignment="Left">
+      <StackPanel Spacing="5">
+        <TextBlock Classes="textPageTitle" Text="窗口外壳控件" />
+        <TextBlock Classes="textSecondary" TextWrapping="Wrap"
+                   Text="自绘标题栏按钮、主题选择、头像、菜单卡片与底栏状态徽标。菜单卡片在真实窗口中由 Popup 承载，这里内联展示。" />
+      </StackPanel>
+
+      <Border Background="{DynamicResource NavBgBrush}" CornerRadius="10" Padding="8" Height="40">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <chrome:TitleBarButton Classes="iconOnly" ToolTip.Tip="固定收起">
+            <fi:FluentIcon Icon="PanelLeftContract" IconSize="Size20" FontSize="20" Width="20" Height="20" />
+          </chrome:TitleBarButton>
+          <TextBlock Text="标题" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource FgDefaultBrush}" VerticalAlignment="Center" />
+          <chrome:TitleBarButton x:Name="ThemeButton">
+            <chrome:TitleBarButton.Flyout>
+              <chrome:ThemeModeFlyout />
+            </chrome:TitleBarButton.Flyout>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <fi:FluentIcon Icon="WeatherSunny" IconSize="Size16" FontSize="14" VerticalAlignment="Center" />
+              <TextBlock x:Name="ThemeText" Text="跟随系统" VerticalAlignment="Center" />
+            </StackPanel>
+          </chrome:TitleBarButton>
+          <chrome:TitleBarButton>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <fi:FluentIcon Icon="Comment" IconSize="Size16" FontSize="14" VerticalAlignment="Center" />
+              <TextBlock Text="反馈" VerticalAlignment="Center" />
+            </StackPanel>
+          </chrome:TitleBarButton>
+          <ToggleSwitch Classes="themeSwitch" OnContent="" OffContent="" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <StackPanel Orientation="Horizontal" Spacing="16">
+        <chrome:Avatar Initials="A" />
+        <chrome:Avatar Initials="Bo" Width="34" Height="34" FontSize="14" />
+        <chrome:Avatar Initials="C" Width="48" Height="48" FontSize="18" />
+      </StackPanel>
+
+      <StackPanel Orientation="Horizontal" Spacing="24">
+        <chrome:PopupCard Width="248" HorizontalAlignment="Left" Margin="0">
+          <StackPanel Spacing="2">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="8,8,8,6">
+              <chrome:Avatar Initials="A" Width="34" Height="34" FontSize="14" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="Avery" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource FgPrimaryBrush}" />
+                <TextBlock Text="示例组织 / 示例小组" FontSize="11" Foreground="{DynamicResource FgSecondaryBrush}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Border Classes="menuCardDivider" />
+            <chrome:MenuCardItem Icon="Power" IconVariant="Filled" Text="开机启动" FontWeight="SemiBold">
+              <chrome:MenuCardItem.Trailing>
+                <ToggleSwitch OnContent="" OffContent="" IsChecked="True" />
+              </chrome:MenuCardItem.Trailing>
+            </chrome:MenuCardItem>
+            <chrome:MenuCardItem Icon="WeatherSunny" Text="浅色" />
+            <chrome:MenuCardItem Icon="Settings" Text="设置" />
+            <chrome:MenuCardItem Icon="ArrowSync" Text="检查更新" Detail="1.2.3" />
+            <chrome:MenuCardItem Icon="ArrowExit" Text="退出" />
+          </StackPanel>
+        </chrome:PopupCard>
+        <StackPanel Spacing="12">
+          <Button x:Name="PopupAnchor" Classes="contentButton" Content="打开 Popup 卡片" Click="OpenPopup" />
+          <Popup x:Name="CardPopup" PlacementTarget="{Binding #PopupAnchor}" Placement="BottomEdgeAlignedLeft"
+                 IsLightDismissEnabled="True" WindowManagerAddShadowHint="False" HorizontalOffset="-20" VerticalOffset="-14">
+            <chrome:PopupCard Width="220">
+              <StackPanel Spacing="2">
+                <chrome:MenuCardItem Icon="Settings" Text="设置" />
+                <chrome:MenuCardItem Icon="Info" Text="关于" />
+              </StackPanel>
+            </chrome:PopupCard>
+          </Popup>
+          <Border Background="{DynamicResource BgSurfaceSubtleBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}"
+                  BorderThickness="0,1,0,0" Height="34" Padding="12,0" Width="360">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+              <chrome:StatusBadge LightBrush="#22C55E" Text="已连接" />
+              <chrome:StatusBadge LightBrush="#F59E0B" Text="同步中" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

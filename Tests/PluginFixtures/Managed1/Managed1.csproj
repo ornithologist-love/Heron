@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AssemblyName>Heron.ClientFramework.PluginProbe.Managed</AssemblyName><EnableDynamicLoading>true</EnableDynamicLoading></PropertyGroup><ItemGroup>
+<ProjectReference Include="../Contracts/Heron.ClientFramework.PluginProbe.Contracts.csproj" Private="false" />
+<ProjectReference Include="../Private1/Private1.csproj" />
+<Compile Include="../ManagedProbe.cs" Link="ManagedProbe.cs" />
+</ItemGroup></Project>

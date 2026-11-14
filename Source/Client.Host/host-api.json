@@ -1,0 +1,22 @@
+{
+  "host_api": "4",
+  "shared_assemblies": [
+    "Heron.ClientFramework.Abstractions",
+    "Heron.ClientFramework.Runtime",
+    "Heron.ClientFramework.Infrastructure",
+    "Heron.ClientFramework.Plugins",
+    "Heron.ClientFramework.Shell",
+    "Heron.ClientControls",
+    "CommunityToolkit.Mvvm",
+    "Serilog"
+  ],
+  "shared_prefixes": [
+    "Avalonia",
+    "FluentIcons.",
+    "Semi.",
+    "Microsoft.Extensions."
+  ],
+  "compatible_patch_prefixes": [
+    "Avalonia"
+  ]
+}

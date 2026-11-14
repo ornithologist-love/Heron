@@ -1,0 +1,195 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:Heron.ClientFramework.Shell"
+             xmlns:plugins="using:Heron.ClientFramework.Abstractions"
+             xmlns:chrome="using:Heron.ClientControls.Chrome"
+             xmlns:buttons="using:Heron.ClientControls.Buttons"
+             xmlns:fi="using:FluentIcons.Avalonia"
+             x:Class="Heron.ClientFramework.Shell.ShellLayout"
+             x:CompileBindings="True">
+    <!-- DataContext stays the host's: slot content binds to the host model. Shell parts bind to the window.
+         Slot presenters must inherit DataContext; binding it on them leaves bindings declared in XAML slot content
+         without a source. -->
+    <Grid RowDefinitions="40,*" Margin="{Binding $parent[shell:ShellWindow].OffScreenMargin}">
+        <Border Grid.Row="0" Background="{DynamicResource NavBgBrush}" Win32Properties.NonClientHitTestResult="Caption">
+            <Grid x:Name="TitleBarContent" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="8,0,150,0">
+                <chrome:TitleBarButton x:Name="PinButton" Grid.Column="0" Classes="iconOnly"
+                                       Command="{Binding $parent[shell:ShellWindow].State.ToggleSidebarPinnedCommand}"
+                                       ToolTip.Tip="{Binding $parent[shell:ShellWindow].State.SidebarPinToolTip}"
+                                       Foreground="{DynamicResource FgDefaultBrush}">
+                    <fi:FluentIcon Icon="{Binding $parent[shell:ShellWindow].State.SidebarPinIcon}"
+                                   IconVariant="Regular" IconSize="Size20" FontSize="20" Width="20" Height="20" />
+                </chrome:TitleBarButton>
+                <ContentPresenter Grid.Column="1" Content="{Binding $parent[shell:ShellWindow].TitleContent}"
+                                  HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <chrome:TitleBarButton x:Name="ThemeButton" Grid.Column="2"
+                                       IsVisible="{Binding $parent[shell:ShellWindow].ShowThemeButton}"
+                                       ToolTip.Tip="{Binding $parent[shell:ShellWindow].State.ThemeText}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <fi:FluentIcon Icon="{Binding $parent[shell:ShellWindow].State.ThemeIcon}"
+                                       IconVariant="Regular" IconSize="Size16" FontSize="14" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding $parent[shell:ShellWindow].State.ThemeText}" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                </chrome:TitleBarButton>
+                <ContentPresenter Grid.Column="3" Content="{Binding $parent[shell:ShellWindow].TitleBarActions}"
+                                  VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+        <Panel Grid.Row="1">
+            <Grid IsVisible="{Binding $parent[shell:ShellWindow].IsWorkspaceVisible}" RowDefinitions="Auto,*,34"
+                  Background="{DynamicResource NavBgBrush}">
+                <!-- A real layout row keeps banners outside native page airspace. -->
+                <ContentPresenter Grid.Row="0" Content="{Binding $parent[shell:ShellWindow].BannerContent}" />
+                <Border x:Name="SidebarPanel" Grid.Row="1" Width="{Binding $parent[shell:ShellWindow].State.SidebarWidth}"
+                        HorizontalAlignment="Left" Background="{DynamicResource NavBgBrush}"
+                        BoxShadow="3 0 10 0 #1F3E433E" ClipToBounds="True" ZIndex="10">
+                    <Border.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Width" Duration="0:0:0.27">
+                                <DoubleTransition.Easing><CubicEaseOut /></DoubleTransition.Easing>
+                            </DoubleTransition>
+                        </Transitions>
+                    </Border.Transitions>
+                    <DockPanel>
+                        <Border DockPanel.Dock="Bottom" Padding="8,0,8,6" Margin="0,2,0,0"
+                                IsVisible="{Binding $parent[shell:ShellWindow].User, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Border x:Name="UserChipPanel" Background="{DynamicResource NavSelectedBgBrush}"
+                                    CornerRadius="8" Height="34" Padding="4,0">
+                                <Panel>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4"
+                                          IsVisible="{Binding $parent[shell:ShellWindow].State.IsSidebarExpanded}">
+                                        <Button x:Name="UserMenuButton" Grid.Column="0" Classes="user-chip"
+                                                ToolTip.Tip="{Binding $parent[shell:ShellWindow].User.Description}">
+                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                                <chrome:Avatar Initials="{Binding $parent[shell:ShellWindow].User.Initials}"
+                                                               Source="{Binding $parent[shell:ShellWindow].User.Avatar}" />
+                                                <TextBlock Grid.Column="1" Classes="sidebar-label"
+                                                           Opacity="{Binding $parent[shell:ShellWindow].State.SidebarTextOpacity}"
+                                                           Text="{Binding $parent[shell:ShellWindow].User.DisplayName}"
+                                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                           FontSize="13" FontWeight="Normal" Foreground="{DynamicResource FgPrimaryBrush}" />
+                                            </Grid>
+                                        </Button>
+                                        <ContentPresenter Grid.Column="1" Classes="sidebar-label" VerticalAlignment="Center"
+                                                          Opacity="{Binding $parent[shell:ShellWindow].State.SidebarTextOpacity}"
+                                                          Content="{Binding $parent[shell:ShellWindow].UserChipAccessory}" />
+                                    </Grid>
+                                    <Panel IsVisible="{Binding !$parent[shell:ShellWindow].State.IsSidebarExpanded}">
+                                        <chrome:Avatar HorizontalAlignment="Center"
+                                                       Initials="{Binding $parent[shell:ShellWindow].User.Initials}"
+                                                       Source="{Binding $parent[shell:ShellWindow].User.Avatar}" />
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                          Content="{Binding $parent[shell:ShellWindow].UserChipOverlay}" />
+                                    </Panel>
+                                    <!-- Native Popup with a self-drawn card: a Flyout presenter would leak colour around
+                                         the rounded corners. The card's 20px shadow margin is compensated in the offsets. -->
+                                    <Popup x:Name="UserMenuPopup" PlacementTarget="{Binding #UserChipPanel}"
+                                           Placement="TopEdgeAlignedLeft" IsLightDismissEnabled="True"
+                                           WindowManagerAddShadowHint="False" HorizontalOffset="-20" VerticalOffset="14">
+                                        <chrome:PopupCard Width="248">
+                                            <StackPanel Spacing="2">
+                                                <Grid x:Name="UserMenuHeader" ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="8,8,8,6"
+                                                      x:DataType="shell:ShellWindow">
+                                                    <chrome:Avatar Width="34" Height="34" FontSize="14"
+                                                                   Initials="{Binding User.Initials}" Source="{Binding User.Avatar}" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="{Binding User.AccountName}" FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource FgPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding User.Organization}" FontSize="11"
+                                                                   Foreground="{DynamicResource FgSecondaryBrush}"
+                                                                   ToolTip.Tip="{Binding User.Organization}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Grid>
+                                                <Border Classes="menuCardDivider" />
+                                                <StackPanel x:Name="UserMenuEntries" Spacing="2" />
+                                            </StackPanel>
+                                        </chrome:PopupCard>
+                                    </Popup>
+                                </Panel>
+                            </Border>
+                        </Border>
+                        <ListBox x:Name="NavigationList" Classes="sidebar" Margin="0,8,0,0"
+                                 ToolTip.Tip="{Binding $parent[shell:ShellWindow].State.Text.NavigationReorderHint}"
+                                 ItemsSource="{Binding $parent[shell:ShellWindow].NavigationItems}"
+                                 SelectedItem="{Binding $parent[shell:ShellWindow].SelectedNavigationItem}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="shell:NavigationItemViewModel">
+                                    <Grid ColumnDefinitions="36,*" ColumnSpacing="7" VerticalAlignment="Center">
+                                        <Border Classes="nav-indicator" Width="4" Height="22" CornerRadius="2"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-3,0,0,0"
+                                                IsHitTestVisible="False" Background="{DynamicResource NavIndicatorBrush}" />
+                                        <fi:FluentIcon Classes="nav-icon" Icon="{Binding Icon}" IconVariant="Filled"
+                                                       IconSize="Size20" FontSize="22" Width="22" Height="22"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Classes="sidebar-label"
+                                                   Opacity="{Binding $parent[shell:ShellWindow].State.SidebarTextOpacity}"
+                                                   Text="{Binding Title}" LineHeight="20" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+                <Border Grid.Row="1" Margin="{Binding $parent[shell:ShellWindow].State.SidebarContentMargin}"
+                        Background="{DynamicResource BgSurfaceBrush}" CornerRadius="10,0,0,0" ClipToBounds="True"
+                        IsVisible="{Binding $parent[shell:ShellWindow].IsContentVisible}">
+                    <Border.Transitions>
+                        <Transitions>
+                            <ThicknessTransition Property="Margin" Duration="0:0:0.27">
+                                <ThicknessTransition.Easing><CubicEaseOut /></ThicknessTransition.Easing>
+                            </ThicknessTransition>
+                        </Transitions>
+                    </Border.Transitions>
+                    <Grid>
+                        <ContentControl Content="{Binding $parent[shell:ShellWindow].PageContent}"
+                                        IsVisible="{Binding $parent[shell:ShellWindow].PageContent, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <shell:PluginPageHost ItemsSource="{Binding $parent[shell:ShellWindow].MountedPages}" />
+                    </Grid>
+                </Border>
+                <Border Grid.Row="2" Background="{DynamicResource BgSurfaceSubtleBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,1,0,0" ZIndex="20">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16" Margin="12,0,10,0">
+                        <ItemsControl Grid.Column="0" VerticalAlignment="Center"
+                                      ItemsSource="{Binding $parent[shell:ShellWindow].LeftStatuses}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="plugins:ClientPluginStatus">
+                                    <ContentControl Content="{Binding LeftContent}" HorizontalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ContentPresenter Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                          Content="{Binding $parent[shell:ShellWindow].FooterContent}" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                            <ContentPresenter VerticalAlignment="Center"
+                                              Content="{Binding $parent[shell:ShellWindow].FooterTrailingContent}" />
+                            <ItemsControl ItemsSource="{Binding $parent[shell:ShellWindow].Statuses}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="plugins:ClientPluginStatus">
+                                        <StackPanel x:Name="StatusEntry" Orientation="Horizontal">
+                                            <buttons:IconButton Classes="statusCapsule" Icon="{Binding IconContent}" Text="{Binding Text}"
+                                                                IconSize="14" Spacing="5" FontSize="12" Command="{Binding Command}"
+                                                                IsVisible="{Binding HasIcon}" ShowIntroGlow="{Binding ShowIntroGlow}"
+                                                                ToolTip.Tip="{Binding Detail}" />
+                                            <chrome:StatusBadge Command="{Binding Command}" IsVisible="{Binding !HasIcon}"
+                                                                LightBrush="{Binding Brush}" Text="{Binding Text}"
+                                                                ToolTip.Tip="{Binding Detail}" />
+                                            <!-- Only plugins that set PopupContent ever open it. -->
+                                            <Popup IsOpen="{Binding IsPopupOpen, Mode=TwoWay}" PlacementTarget="{Binding #StatusEntry}"
+                                                   Placement="Top" IsLightDismissEnabled="True" HorizontalOffset="-250" VerticalOffset="-6">
+                                                <ContentControl Content="{Binding PopupContent}" />
+                                            </Popup>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+            <ContentPresenter Content="{Binding $parent[shell:ShellWindow].OverlayContent}" />
+        </Panel>
+    </Grid>
+</UserControl>

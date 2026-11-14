@@ -1,0 +1,134 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fi="using:FluentIcons.Avalonia"
+        xmlns:buttons="using:Heron.ClientControls.Buttons">
+    <!-- Shell sidebar: navigation list (ListBox.sidebar), fading labels (*.sidebar-label), user chip and
+         footer status capsules.
+         Colors and weights come from the host theme tokens. -->
+    <Style Selector="ListBox.sidebar">
+        <Setter Property="Background" Value="{DynamicResource NavBgBrush}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem">
+        <Setter Property="Height" Value="42" />
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="Margin" Value="5,2" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Foreground" Value="{DynamicResource NavItemTextBrush}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="{DynamicResource NavItemWeight}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem.reordering">
+        <Setter Property="Opacity" Value="0.6" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSelectedBrush}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavHoverBgBrush}" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavSelectedBgBrush}" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource NavSelectedFgBrush}" />
+        <Setter Property="FontWeight" Value="{DynamicResource NavActiveItemWeight}" />
+    </Style>
+    <Style Selector="ListBox.sidebar fi|FluentIcon.nav-icon">
+        <Setter Property="Foreground" Value="{DynamicResource NavIconBrush}" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem:selected fi|FluentIcon.nav-icon">
+        <Setter Property="Foreground" Value="{DynamicResource NavSelectedIconBrush}" />
+    </Style>
+    <Style Selector="ListBox.sidebar Border.nav-indicator">
+        <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="ListBox.sidebar ListBoxItem:selected Border.nav-indicator">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="TextBlock.sidebar-label">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.21">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut />
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="StackPanel.sidebar-label">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.21">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut />
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.sidebar-label">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.21">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut />
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="ContentPresenter.sidebar-label">
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.21">
+                    <DoubleTransition.Easing>
+                        <CubicEaseOut />
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- Sidebar user chip: transparent button that opens the user menu. -->
+    <Style Selector="Button.user-chip">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="2,0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.user-chip /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.user-chip:pointerover /template/ ContentPresenter, Button.user-chip:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavSelectedBgBrush}" />
+    </Style>
+    <!-- Plugin status with an icon: filled capsule in the footer. -->
+    <Style Selector="buttons|IconButton.statusCapsule">
+        <Setter Property="Height" Value="24" />
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontWeight" Value="{DynamicResource ButtonEmphasisLargeFontWeight}" />
+        <Setter Property="Background" Value="{DynamicResource StatusActionBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource StatusActionBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource StatusActionForeground}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="buttons|IconButton.statusCapsule:pointerover">
+        <Setter Property="Background" Value="{DynamicResource ButtonPrimaryHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryHoverBrush}" />
+    </Style>
+    <Style Selector="buttons|IconButton.statusCapsule:pressed">
+        <Setter Property="Background" Value="{DynamicResource ButtonPrimaryPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryPressedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource FgOnAccentBrush}" />
+    </Style>
+</Styles>

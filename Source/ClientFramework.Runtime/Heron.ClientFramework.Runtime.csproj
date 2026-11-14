@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.ClientFramework.Runtime</PackageId>
+    <AssemblyName>Heron.ClientFramework.Runtime</AssemblyName>
+    <RootNamespace>Heron.ClientFramework.Runtime</RootNamespace>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../ClientFramework.Abstractions/Heron.ClientFramework.Abstractions.csproj" /><PackageReference Include="Microsoft.Extensions.DependencyInjection" /><PackageReference Include="Microsoft.Extensions.Logging" /><PackageReference Include="Serilog.Extensions.Logging" /></ItemGroup>
+</Project>

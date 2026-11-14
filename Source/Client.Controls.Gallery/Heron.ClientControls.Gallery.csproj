@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Heron.ClientControls.Gallery</RootNamespace>
+    <AssemblyName>Heron.ClientControls.Gallery</AssemblyName>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../../../Binaries/Heron/Gallery/</BaseOutputPath>
+    <HotAvaloniaInitialPatching>false</HotAvaloniaInitialPatching>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Client.Controls/Heron.ClientControls.csproj" GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Semi.Avalonia" />
+    <PackageReference Include="Semi.Avalonia.DataGrid" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageReference Include="HotAvalonia" PrivateAssets="all" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

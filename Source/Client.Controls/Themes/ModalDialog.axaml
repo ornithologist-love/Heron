@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:dialogs="using:Heron.ClientControls.Dialogs"
+                    xmlns:fi="using:FluentIcons.Avalonia">
+  <SolidColorBrush x:Key="ModalOverlayBrush" Color="#66000000" />
+  <ControlTheme x:Key="{x:Type dialogs:ModalDialog}" TargetType="dialogs:ModalDialog">
+    <Setter Property="OverlayBrush" Value="{DynamicResource ModalOverlayBrush}" />
+    <Setter Property="Background" Value="{DynamicResource BgContentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="{TemplateBinding OverlayBrush}">
+          <Border x:Name="PART_Panel" Margin="{TemplateBinding DialogMargin}"
+                  MaxWidth="{TemplateBinding DialogMaxWidth}" Height="{TemplateBinding DialogHeight}"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                  Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                  BoxShadow="0 12 40 0 #26000000">
+            <Grid Margin="20" RowDefinitions="Auto,*,Auto" RowSpacing="16">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="4" VerticalAlignment="Center">
+                  <TextBlock Classes="textSectionTitle" Text="{TemplateBinding Title}" TextWrapping="Wrap" />
+                  <TextBlock x:Name="PART_Description" Classes="textMeta" Text="{TemplateBinding Description}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button x:Name="PART_Close" Grid.Column="1" Classes="contentButton buttonQuiet buttonIcon"
+                        VerticalAlignment="Top" ToolTip.Tip="关闭" AutomationProperties.Name="关闭弹窗">
+                  <fi:FluentIcon Icon="Dismiss" IconSize="Size16" />
+                </Button>
+              </Grid>
+              <ContentPresenter x:Name="PART_ContentPresenter" Grid.Row="1" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+              <ContentPresenter x:Name="PART_Footer" Grid.Row="2" Content="{TemplateBinding Footer}"
+                                HorizontalContentAlignment="Stretch" />
+            </Grid>
+          </Border>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

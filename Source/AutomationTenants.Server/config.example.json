@@ -1,0 +1,24 @@
+{
+  "listen": "127.0.0.1:5183",
+  "directory": "./state",
+  "approved_workflows_path": "./publication-ledger.json",
+  "script_source_url": "http://127.0.0.1:5173/api/automation-scripts/catalog.json",
+  "default_tenant": "orchard",
+  "protocol": {
+    "webhook_header_prefix": "X-Heron",
+    "mcp_realm": "heron-automation",
+    "legacy_publication_owner": "orchard",
+    "actor_header": "X-Heron-Actor",
+    "access_header": "X-Heron-Automation-Access",
+    "mcp_server_name": "Heron Automation"
+  },
+  "mcp": { "tenant_ids": ["orchard"] },
+  "tenants": [{
+    "id": "orchard",
+    "name": "Orchard",
+    "admins": ["operator"],
+    "default_pool": "pool",
+    "tasks": [],
+    "pools": [{"id": "pool", "name": "Mock pool", "machine_names": ["worker-one"]}]
+  }]
+}

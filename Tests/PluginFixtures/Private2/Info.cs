@@ -1,0 +1,1 @@
+namespace Heron.ClientFramework.PluginProbe.Private; public static class Info { public static string Identity => "private-2"; }

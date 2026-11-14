@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "probe.managed2",
+  "version": "1.0.0",
+  "host_api": "1",
+  "modules": [
+    {
+      "name": "main",
+      "assembly": "Heron.ClientFramework.PluginProbe.Managed.dll",
+      "entry_type": "Heron.ClientFramework.PluginProbe.ManagedProbe"
+    }
+  ]
+}

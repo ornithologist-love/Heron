@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.ClientFramework.Plugins</PackageId>
+    <AssemblyName>Heron.ClientFramework.Plugins</AssemblyName>
+    <RootNamespace>Heron.ClientFramework.Plugins</RootNamespace>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup></ItemGroup>
+</Project>

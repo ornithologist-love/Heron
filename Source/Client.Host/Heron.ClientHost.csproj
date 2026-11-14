@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Minimal Heron shell launcher: ShellWindow + plugin host, no product identity, sign-in or business services. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Heron.ClientHost</AssemblyName>
+    <RootNamespace>Heron.ClientHost</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../../../Binaries/Heron/ClientHost/</BaseOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ClientFramework.Shell/Heron.ClientFramework.Shell.csproj" />
+    <ProjectReference Include="../ClientFramework.Runtime/Heron.ClientFramework.Runtime.csproj" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Semi.Avalonia" />
+    <PackageReference Include="Semi.Avalonia.DataGrid" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <None Update="host-api.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.Pregel.Scripting</PackageId>
+    <AssemblyName>Heron.Pregel.Scripting</AssemblyName>
+    <RootNamespace>Heron.Pregel.Scripting</RootNamespace>
+    <IsPackable>true</IsPackable>
+    <Description>Reusable durable graph execution: Pregel.Scripting.</Description>
+
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Pregel.Tooling/Heron.Pregel.Tooling.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
+  </ItemGroup>
+</Project>

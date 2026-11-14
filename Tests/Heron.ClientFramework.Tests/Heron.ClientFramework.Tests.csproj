@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Source/ClientFramework.Plugins/Heron.ClientFramework.Plugins.csproj" />
+    <ProjectReference Include="../../Source/ClientFramework.Runtime/Heron.ClientFramework.Runtime.csproj" />
+    <ProjectReference Include="../../Source/ClientFramework.Shell/Heron.ClientFramework.Shell.csproj" />
+    <Compile Include="../Support/Anchor.cs" Link="Support/Anchor.cs" />
+
+    <ProjectReference Include="../PluginFixtures/Contracts/Heron.ClientFramework.PluginProbe.Contracts.csproj" />
+    <ProjectReference Include="../PluginFixtures/Managed1/Managed1.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../PluginFixtures/Managed2/Managed2.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../PluginFixtures/CompatiblePrivate/CompatiblePrivate.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+  <Target Name="CopyProbeFixtures" AfterTargets="Build">
+    <ItemGroup>
+      <ProbeManaged1 Include="../PluginFixtures/Managed1/bin/$(Configuration)/net8.0/**/*" />
+      <ProbeManaged2 Include="../PluginFixtures/Managed2/bin/$(Configuration)/net8.0/**/*" />
+      <CompatiblePrivate Include="../PluginFixtures/CompatiblePrivate/bin/$(Configuration)/net8.0/Heron.ClientFramework.PluginProbe.Private.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ProbeManaged1)" DestinationFiles="@(ProbeManaged1->'$(OutDir)plugins/Managed1/%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="../PluginFixtures/Managed1/plugin.json" DestinationFolder="$(OutDir)plugins/Managed1" />
+    <Copy SourceFiles="@(ProbeManaged2)" DestinationFiles="@(ProbeManaged2->'$(OutDir)plugins/Managed2/%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="../PluginFixtures/Managed2/plugin.json" DestinationFolder="$(OutDir)plugins/Managed2" />
+    <Copy SourceFiles="@(CompatiblePrivate)" DestinationFolder="$(OutDir)plugins/CompatiblePrivate" />
+  </Target>
+</Project>

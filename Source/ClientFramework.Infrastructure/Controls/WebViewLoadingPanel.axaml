@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Heron.ClientFramework.Infrastructure.WebViewLoadingPanel">
+    <Border Background="{DynamicResource BgAppBrush}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Orientation="Horizontal" Spacing="12">
+            <ProgressBar x:Name="LoadingProgressBar" Minimum="0" Maximum="100"
+                         Width="320" Height="6" VerticalAlignment="Center">
+                <ProgressBar.Styles>
+                    <Style Selector="ProgressBar">
+                        <Style.Animations>
+                            <Animation Duration="0:0:1.6" IterationCount="INFINITE"
+                                       PlaybackDirection="Alternate" Easing="CubicEaseInOut">
+                                <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.45" /></KeyFrame>
+                                <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                            </Animation>
+                        </Style.Animations>
+                    </Style>
+                </ProgressBar.Styles>
+            </ProgressBar>
+            <TextBlock x:Name="LoadingPercent" Text="0%" FontSize="12" Opacity="0.55"
+                       Foreground="{DynamicResource FgDefaultBrush}"
+                       VerticalAlignment="Center" MinWidth="32" />
+        </StackPanel>
+    </Border>
+</UserControl>

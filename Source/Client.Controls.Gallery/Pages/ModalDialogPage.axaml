@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dialogs="using:Heron.ClientControls.Dialogs"
+             x:Class="Heron.ClientControls.Gallery.Pages.ModalDialogPage">
+  <Grid Background="{DynamicResource BgContentBrush}">
+    <StackPanel x:Name="BackgroundPage" Margin="28" Spacing="16">
+      <TextBlock Classes="textPageTitle" Text="内嵌模态弹窗" />
+      <TextBlock Classes="textSecondary" Text="统一标题、遮罩、关闭与键盘焦点；缩小窗口可检查内容滚动和底部操作。" TextWrapping="Wrap" />
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Classes="contentButton buttonPrimary buttonMedium" Content="打开弹窗" Click="Open_Click" />
+        <Button Classes="contentButton buttonSecondary buttonMedium" Content="长内容" Click="Long_Click" />
+      </StackPanel>
+      <TextBox PlaceholderText="弹窗关闭后可操作背景" />
+      <TextBlock x:Name="Feedback" Classes="textMeta" />
+    </StackPanel>
+    <dialogs:ModalDialog x:Name="DemoDialog" Title="设置" Description="这是 Client.Controls 的公共模态组件示例。"
+                         IsOpen="True" InitialFocus="{Binding #DemoInput}" Closed="Dialog_Closed">
+      <dialogs:ModalDialog.Footer>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+          <Button Classes="contentButton buttonSecondary buttonMedium" Content="取消" Click="Close_Click" />
+          <Button Classes="contentButton buttonPrimary buttonMedium" Content="保存" Click="Save_Click" />
+        </StackPanel>
+      </dialogs:ModalDialog.Footer>
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="textFieldLabel" Text="名称" />
+          <TextBox x:Name="DemoInput" PlaceholderText="打开后自动聚焦；Tab 在弹窗内循环" />
+          <TextBlock x:Name="SampleText" Classes="textSecondary" TextWrapping="Wrap"
+                     Text="内容和底部按钮由调用方提供，关闭按钮与 Esc 由公共组件处理。" />
+        </StackPanel>
+      </ScrollViewer>
+    </dialogs:ModalDialog>
+  </Grid>
+</UserControl>

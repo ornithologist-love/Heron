@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Heron.ClientControls</RootNamespace>
+    <AssemblyName>Heron.ClientControls</AssemblyName>
+    <PackageId>Heron.ClientControls</PackageId>
+    <Description>Reusable Avalonia controls, semantic themes and color tokens.</Description>
+    <IsPackable>true</IsPackable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" />
+    <PackageReference Include="FluentIcons.Avalonia" />
+    <PackageReference Include="Markdig" />
+    <None Update="THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

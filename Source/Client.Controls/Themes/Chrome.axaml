@@ -1,0 +1,177 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="using:Heron.ClientControls.Chrome"
+        xmlns:fi="using:FluentIcons.Avalonia">
+    <!-- Window chrome and menu surfaces: title bar buttons, theme switch, self-drawn popup cards,
+         menu card entries, avatars and flat status badges. Colors come from ColorTokens. -->
+
+    <!-- A popup host has no rounded corners; any opaque fill would leak around a rounded card. -->
+    <Style Selector="PopupRoot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="chrome|Avatar">
+        <Setter Property="Background" Value="{DynamicResource NavIndicatorBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Title bar capsule (icon + short label). -->
+    <Style Selector="Button.titleBarButton">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource ContentButtonBorderThickness}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource FgDefaultBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.titleBarButton /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource ContentButtonBorderThickness}" />
+        <Setter Property="CornerRadius" Value="12" />
+    </Style>
+    <Style Selector="Button.titleBarButton:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <Style Selector="Button.titleBarButton:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgPressedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}" />
+    </Style>
+    <!-- Borderless square variant for a single icon (e.g. sidebar pin). -->
+    <Style Selector="Button.titleBarButton.iconOnly">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.titleBarButton.iconOnly /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.titleBarButton.iconOnly:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavHoverBgBrush}" />
+    </Style>
+    <Style Selector="Button.titleBarButton.iconOnly:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavSelectedBgBrush}" />
+    </Style>
+
+    <!-- Light/dark switch: track and knob use the four ThemeSwitch tokens in every state. -->
+    <Style Selector="ToggleSwitch.themeSwitch /template/ Border#SwitchBackgroundBorder">
+        <Setter Property="Background" Value="{DynamicResource ThemeSwitchOffBrush}" />
+    </Style>
+    <Style Selector="ToggleSwitch.themeSwitch:unchecked /template/ Border#SwitchBackgroundBorder, ToggleSwitch.themeSwitch:unchecked:pointerover /template/ Border#SwitchBackgroundBorder, ToggleSwitch.themeSwitch:unchecked:pressed /template/ Border#SwitchBackgroundBorder">
+        <Setter Property="Background" Value="{DynamicResource ThemeSwitchOffBrush}" />
+    </Style>
+    <Style Selector="ToggleSwitch.themeSwitch:checked /template/ Border#SwitchBackgroundBorder, ToggleSwitch.themeSwitch:checked:pointerover /template/ Border#SwitchBackgroundBorder, ToggleSwitch.themeSwitch:checked:pressed /template/ Border#SwitchBackgroundBorder">
+        <Setter Property="Background" Value="{DynamicResource ThemeSwitchOnBrush}" />
+    </Style>
+    <Style Selector="ToggleSwitch.themeSwitch /template/ Border#SwitchKnobIndicator">
+        <Setter Property="Background" Value="{DynamicResource ThemeSwitchOffKnobBrush}" />
+    </Style>
+    <Style Selector="ToggleSwitch.themeSwitch:checked /template/ Border#SwitchKnobIndicator">
+        <Setter Property="Background" Value="{DynamicResource ThemeSwitchOnKnobBrush}" />
+    </Style>
+
+    <!-- Self-drawn popup card; the 20px margin leaves room for the shadow. -->
+    <Style Selector="chrome|PopupCard">
+        <Setter Property="Margin" Value="20" />
+        <Setter Property="Background" Value="{DynamicResource NavBgBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BrandDividerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="6" />
+        <Setter Property="BoxShadow" Value="0 6 16 0 #33000000" />
+    </Style>
+
+    <!-- Menu card entry. -->
+    <Style Selector="Button.menuCardItem">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.menuCardItem /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.menuCardItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavHoverBgBrush}" />
+    </Style>
+    <Style Selector="Button.menuCardItem:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource NavSelectedBgBrush}" />
+    </Style>
+    <Style Selector="Button.menuCardItem fi|FluentIcon.menuCardIcon">
+        <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.menuCardItem TextBlock.menuCardText">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{DynamicResource FgDefaultBrush}" />
+    </Style>
+    <Style Selector="Button.menuCardItem TextBlock.menuCardDetail">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource FgSecondaryBrush}" />
+    </Style>
+    <Style Selector="Border.menuCardDivider">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource BrandDividerBrush}" />
+        <Setter Property="Margin" Value="6,0,6,4" />
+    </Style>
+
+    <!-- Flat status badge (no capsule background) with subtle hover feedback. -->
+    <Style Selector="Button.statusBadge">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="CornerRadius" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.statusBadge /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="13" />
+    </Style>
+    <Style Selector="Button.statusBadge:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.statusBadge:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgPressedBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Ellipse.statusGlow">
+        <Style.Animations>
+            <Animation Duration="0:0:1.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                <KeyFrame Cue="0%">
+                    <Setter Property="Opacity" Value="0.2" />
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="Opacity" Value="0.8" />
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+</Styles>
