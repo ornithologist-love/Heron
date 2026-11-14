@@ -13,6 +13,8 @@ covers: [Source/Client.Controls/**, Source/Client.Controls.Gallery/**, Source/Cl
 
 `Chrome/` 下是宿主窗口外壳用的通用件：标题栏按钮（胶囊与仅图标两种，标题栏内按下不触发窗口拖动）、三态主题菜单、头像（图片或首字母）、弹出卡片、菜单卡片项和带呼吸光点的状态徽标，样式在 `Themes/Chrome.axaml`，随 `HeronTheme.axaml` 一起生效。它们只负责外观和交互，文案由使用方给：主题菜单默认是"跟随系统 / 浅色 / 深色"，宿主可以改名。菜单用原生弹出层承载自绘卡片，而不是 Flyout，因为 Flyout 的呈现器会在圆角外漏出底色；主题因此把 `PopupRoot` 设为透明。组装这些控件的窗口是框架层的 [`ShellWindow`](client-framework.md#shell-window)。
 
+三态主题菜单的选项须在呈现器创建前初始化，每次打开时再更新宿主文案和当前勾选。只在 `Opening` 中首次填充选项，会使 Avalonia 的菜单呈现器绑定到初始空集合，出现菜单已弹出却没有内容的情况。
+
 ## Gallery 边界
 
 `Source/Client.Controls.Gallery` 是独立可执行的控件工作台，只引用控件项目和公共 UI 依赖，不引用消费方源码或 SDK。组件按两级 Tab 组织，切换时只创建当前展示页；Toast 示例在页面离开时清理通知。独立窗口各自创建控件实例。

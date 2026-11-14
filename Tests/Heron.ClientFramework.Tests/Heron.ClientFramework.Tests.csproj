@@ -18,6 +18,8 @@
     <ProjectReference Include="../PluginFixtures/CompatiblePrivate/CompatiblePrivate.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Semi.Avalonia" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">

@@ -26,7 +26,12 @@ public class ThemeModeFlyout : MenuFlyout
     public static readonly StyledProperty<string> DarkLabelProperty =
         AvaloniaProperty.Register<ThemeModeFlyout, string>(nameof(DarkLabel), "深色");
 
-    public ThemeModeFlyout() => Opening += (_, _) => Rebuild();
+    public ThemeModeFlyout()
+    {
+        // MenuFlyout creates its presenter before Opening; its initial item source must already exist.
+        Rebuild();
+        Opening += (_, _) => Rebuild();
+    }
 
     /// <summary>Current choice: <c>system</c>, <c>light</c> or <c>dark</c>.</summary>
     public string Mode
