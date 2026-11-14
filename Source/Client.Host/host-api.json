@@ -18,5 +18,10 @@
   ],
   "compatible_patch_prefixes": [
     "Avalonia"
-  ]
+  ],
+  "compatible_assembly_versions": {
+    "Avalonia.Base, Version=12.0.5.0, Culture=neutral, PublicKeyToken=c8d484a7012f9a8b": "Avalonia.Base, Version=12.1.3.0, Culture=neutral, PublicKeyToken=c8d484a7012f9a8b",
+    "Avalonia.Controls, Version=12.0.5.0, Culture=neutral, PublicKeyToken=c8d484a7012f9a8b": "Avalonia.Controls, Version=12.1.3.0, Culture=neutral, PublicKeyToken=c8d484a7012f9a8b",
+    "Avalonia.Markup.Xaml, Version=12.0.5.0, Culture=neutral, PublicKeyToken=c8d484a7012f9a8b": "Avalonia.Markup.Xaml, Version=12.1.3.0, Culture=neutral, PublicKeyToken=c8d484a7012f9a8b"
+  }
 }
