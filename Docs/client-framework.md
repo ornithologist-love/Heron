@@ -9,6 +9,8 @@ ClientFramework separates reusable plugin mechanisms from the product that hosts
 
 ## Boundaries
 
+The Infrastructure package ships the WebView2 Core interop and its license alongside its own assembly. This is a private manual reference rather than a transitive NuGet dependency: compiling the library from source copies it automatically, while packing only the library would omit a required runtime assembly. WPF and WinForms hosts are not included.
+
 `Heron.ClientFramework.Plugins` uses only the BCL. It owns package manifests, dependency resolution, editions, assembly isolation, version storage, enablement choices and assembly of already-built artifacts. It does not invoke compilers or know consumer repositories, native libraries or business features.
 
 `Heron.ClientFramework.Abstractions` contains the narrow desktop contracts for modules, pages, commands, status and optional host capabilities. It depends on the plugin model, Avalonia, MVVM and DI abstractions. Product copy, application-specific window policy and implementations of host capabilities belong to the consumer.

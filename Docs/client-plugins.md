@@ -18,51 +18,9 @@ covers: [Source/Client.Controls.Gallery.Plugin/**, Source/Client.Host/**, Source
 
 ## 最少的代码
 
-模块是一个实现 `IClientPluginModule` 的类。Gallery 插件的全部入口：
+模块是一个实现 `IClientPluginModule` 的类：在 `StartAsync` 中通过 `context.RegisterPage(...)` 注册页面（指定图标名、默认排序 `Order`，原生 WebView 等不可重建视图可设 `KeepMounted: true`），并在 `StopAsync` 中释放返回的 `IDisposable`。插件私有服务注册在 `ConfigureServices`，只在本插件的服务容器内可见。完整示例直接参见 `Source/Client.Controls.Gallery.Plugin/GalleryModule.cs`。
 
-```csharp
-public sealed class GalleryModule : IClientPluginModule
-{
-    private IDisposable? _page;
-
-    public void ConfigureServices(IServiceCollection services) { }
-
-    public Task StartAsync(IClientPluginContext context, CancellationToken cancellationToken)
-    {
-        _page = context.RegisterPage(new ClientPluginPage("heron.gallery", "控件 Gallery", "Grid", 900,
-            () => new GalleryView(ownsTheme: false)));
-        return Task.CompletedTask;
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        _page?.Dispose();
-        _page = null;
-        return Task.CompletedTask;
-    }
-}
-```
-
-`ClientPluginPage` 的图标是 FluentIcons 的名字，`Order` 决定默认排序；`KeepMounted: true` 让页面离开后保留视图（适合原生 WebView 等不能重建的内容）。插件自己的服务注册在 `ConfigureServices`，只在本插件的服务容器里可见。
-
-`plugin.json` 声明包身份和入口：
-
-```json
-{
-  "schema_version": 1,
-  "id": "heron.gallery",
-  "display_name": "控件 Gallery",
-  "version": "0.2.12",
-  "host_api": "4",
-  "update_mode": "restart_required",
-  "modules": [
-    { "name": "Gallery", "assembly": "Heron.Plugin.Gallery.dll",
-      "entry_type": "Heron.Plugins.Gallery.GalleryModule", "load": "startup" }
-  ]
-}
-```
-
-项目文件把这些串起来：`EnableDynamicLoading`、共享引用不复制、输出目录就是包目录、构建后按项目版本写出 `plugin.json`。直接照抄 `Heron.Plugin.Gallery.csproj`，改 `PluginId`、程序集名和入口类即可。`dotnet build Source/Client.Controls.Gallery.Plugin -c Release` 后包在 `Binaries/Heron/Plugins/<id>/<version>/`。
+包目录根目录的 `plugin.json` 声明包身份（`schema_version`、`id`、`display_name`、`version`、`host_api`、`update_mode` 与 `modules` 入口）。项目文件通过 `EnableDynamicLoading`、共享引用 `Private="false"`/`ExcludeAssets="runtime"` 及构建后写出 `plugin.json` 将其串起；新增插件可直接参考 `Heron.Plugin.Gallery.csproj`，修改 `PluginId`、程序集名与入口类即可。执行 `dotnet build Source/Client.Controls.Gallery.Plugin -c Release` 后，包输出至 `Binaries/Heron/Plugins/<id>/<version>/`。
 
 ## 装配
 
@@ -71,29 +29,14 @@ public sealed class GalleryModule : IClientPluginModule
 **用 Heron 启动器试一个包**：不需要任何产品宿主。
 
 ```powershell
-dotnet run --project Source/Client.Host -- --plugins ../Binaries/Heron/Plugins/heron.gallery/0.2.12
-dotnet run --project Source/Client.Host -- --plugins <插件根目录> --smoke     # 启动、逐个报告、失败即非零退出
+dotnet run --project Source/Client.Host -- --plugins ../Binaries/Heron/Plugins/heron.gallery/0.2.12 --smoke
 ```
 
-`--plugins` 可以重复，指向包目录或包含若干包的根目录。没有给版型时，找到的包全部启用。
+`--plugins` 可以重复，指向包目录或包含若干包的根目录；`--smoke` 会启动、逐个报告并在任何插件失败时以非零码退出。没有给版型时，找到的包全部启用。
 
-**用版型选择和排序**：版型列出插件 ID，外部包写相对路径：
+**用版型选择和排序**：在版型 JSON 的 `plugins` 数组中列出插件项（如 `id`、`title`、`enabled_by_default`，外部包加 `is_external_package: true` 与相对 `package_path`），然后通过 `dotnet run --project Source/Client.Host -- --edition my-edition.json` 启动。
 
-```json
-{
-  "name": "my-edition",
-  "plugins": [
-    { "id": "heron.gallery", "title": "控件 Gallery", "enabled_by_default": true,
-      "is_external_package": true, "package_path": "../Binaries/Heron/Plugins/heron.gallery/0.2.12" }
-  ]
-}
-```
-
-```powershell
-dotnet run --project Source/Client.Host -- --edition my-edition.json
-```
-
-版型点名但找不到包的插件，启动直接失败，不会退回旧产物。工作区的 `ClientEditions/heron-host.json` 就是这样把 Gallery 和任务管理器组在一起的。产品宿主用同一套装配：在它的版型里加一项，插件就以页面形式出现；删掉这一项就拔掉，宿主代码不动。
+版型点名但找不到包的插件，启动直接失败，不会退回旧产物。产品宿主用同一套装配：在它的版型里加一项，插件就以页面形式出现；删掉这一项就拔掉，宿主代码不动。
 
 ## 验证
 

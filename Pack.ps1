@@ -107,6 +107,11 @@ $archives = @(foreach ($package in $packages) {
 foreach ($archive in $archives) {
     $zip = [System.IO.Compression.ZipFile]::OpenRead($archive.Source)
     try {
+        if ($archive.Name -like 'Heron.ClientFramework.Infrastructure.*.nupkg') {
+            foreach ($required in @('lib/net8.0/Microsoft.Web.WebView2.Core.dll', 'licenses/Microsoft.Web.WebView2.LICENSE.txt')) {
+                if ($null -eq $zip.GetEntry($required)) { throw "Missing runtime dependency or license in $($archive.Name): $required" }
+            }
+        }
         foreach ($entry in $zip.Entries) {
             if ($entry.FullName -notmatch '(^|/)Heron\.[^/]+\.dll$') { continue }
             $stream = [System.IO.MemoryStream]::new()
