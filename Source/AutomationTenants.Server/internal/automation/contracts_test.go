@@ -398,12 +398,17 @@ func TestEachTenantDeploysOnlyFromItsOwnPublishedLibrary(t *testing.T) {
 	defer official.Close()
 	defer eval.Close()
 	root := t.TempDir()
-	c := config{Directory: filepath.Join(root, "state"), DefaultTenant: "orchard", Protocol: mockProtocol(), ScriptSourceURL: official.URL}
+	c := config{Directory: filepath.Join(root, "state"), DefaultTenant: "orchard", Protocol: mockProtocol(), ScriptSourceURL: official.URL + "/normal/catalog.json"}
 	for _, id := range []string{"orchard", "meadow"} {
 		tenant := tenantConfig{ID: id, Admins: []string{"operator"}, Tasks: []TaskDefinition{{ID: "job", Name: "Mock job"}},
 			Pools: []poolConfig{{Pool: Pool{ID: "pool"}, MachineNames: []string{id + "-box"}}}}
 		if id == "meadow" {
-			tenant.ScriptSourceURL = eval.URL
+			tenant.ScriptSourceURL = eval.URL + "/other/catalog.json"
+			tenant.ApprovedWorkflowsPath = filepath.Join(root, "published.json")
+			ledger := `{"schema":1,"published":{"approved":{"tenant_id":"meadow","task_id":"job","title":"Mock job","definition_id":"mock-graph"}}}`
+			if err := os.WriteFile(tenant.ApprovedWorkflowsPath, []byte(ledger), 0600); err != nil {
+				t.Fatal(err)
+			}
 		}
 		c.Tenants = append(c.Tenants, tenant)
 	}
@@ -422,6 +427,28 @@ func TestEachTenantDeploysOnlyFromItsOwnPublishedLibrary(t *testing.T) {
 		if err != nil || source.SourceID != "Q1" {
 			t.Fatalf("%s did not deploy from its own library: %+v %v", id, source, err)
 		}
+	}
+	store, err := openStore(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.lock.Close()
+	s.store = store
+	if _, err := s.saveMemberships(membershipChange{MachineName: "orchard-box", TenantIDs: []string{"orchard", "meadow"}}); err != nil {
+		t.Fatal(err)
+	}
+	poll := PollRequest{MachineName: "orchard-box", Capabilities: []string{deploymentCapability, tenantSourceCapability},
+		Tasks: []Task{{ID: "job", Name: "Mock job", CanRun: true}}}
+	if _, err := s.poll(poll); err != nil {
+		t.Fatal(err)
+	}
+	run, err := s.createRun(c.tenantByID["meadow"], "operator", CreateRequest{MachineName: "orchard-box", TaskID: "job"})
+	if err != nil || run.DeploymentID == "" {
+		t.Fatalf("already listed publication must get a pinned deployment: %+v, %v", run, err)
+	}
+	mailbox, err := s.poll(poll)
+	if err != nil || len(mailbox.Deployments) != 1 || mailbox.Deployments[0].CatalogPath != "/other/catalog.json" {
+		t.Fatalf("wrong deployment catalog: %+v, %v", mailbox.Deployments, err)
 	}
 	// A library owned by another tenant never resolves, even if a tenant is pointed at it.
 	wrong := c.tenantByID["orchard"]

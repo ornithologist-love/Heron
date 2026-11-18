@@ -299,7 +299,30 @@ func (s *service) missingTaskSource(tenant tenantConfig, actor string, request C
 	}
 	machine, exists := state.Machines[strings.ToLower(name)]
 	missing := exists && executionTask(machine, request.TaskID, false) == nil
+	multipleSources := false
+	if exists && agentCatalogPath(tenant, machine.Capabilities) != "" {
+		for _, assigned := range s.machineAssignments(name) {
+			if s.config.tenantByID[assigned.TenantID].ScriptSourceURL != tenant.ScriptSourceURL {
+				multipleSources = true
+				break
+			}
+		}
+	}
 	s.store.mu.Unlock()
+	if !missing && multipleSources {
+		publications, err := readWorkflowCatalog(tenant.ApprovedWorkflowsPath)
+		if err != nil {
+			return nil, err
+		}
+		// Installed files can now belong to a different library, including its Shared.
+		// A published run needs its own pinned deployment even if the Agent listed the task.
+		for _, publication := range publications {
+			if publication.TenantID == tenant.ID && publication.TaskID == request.TaskID {
+				missing = true
+				break
+			}
+		}
+	}
 	if !missing {
 		return nil, nil
 	}

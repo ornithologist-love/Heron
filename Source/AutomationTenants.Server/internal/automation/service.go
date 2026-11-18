@@ -259,7 +259,7 @@ func (s *service) createRunAdmitted(tenant tenantConfig, actor string, request C
 			task = &Task{ID: request.TaskID, ConfigurationID: request.TaskID, Name: definition.Name,
 				Parameters: map[string]string{}, CanRun: true, ScriptRevision: source.Revision + ":shared:" + source.SharedRevision}
 		}
-		if !task.CanRun {
+		if !task.CanRun && source == nil {
 			return fault(409, "任务暂不可运行："+task.UnavailableReason)
 		}
 		now := time.Now().UTC()
