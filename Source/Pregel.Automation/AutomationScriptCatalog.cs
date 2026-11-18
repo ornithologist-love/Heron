@@ -309,7 +309,7 @@ public sealed partial class AutomationScriptCatalog : IAsyncDisposable
     private async Task<string> ChangeScriptAsync(string path, bool load, CancellationToken token)
     {
         if (load && !path.EndsWith(".csx", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("请选择 CSX 文件");
-        if (load && IsSourcePath(path)) await _source!.InstallAsync(path, (_, change) =>
+        if (load && IsSourcePath(path)) await _source!.PrepareForLoadAsync(path, (_, change) =>
         {
             string[] ids;
             lock (_gate) ids = _loaded.Where(item => IsUnder(item.Key, _source.Root)).Select(item => item.Value.Id).ToArray();

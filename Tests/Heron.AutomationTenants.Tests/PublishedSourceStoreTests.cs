@@ -160,6 +160,59 @@ public sealed class PublishedSourceStoreTests
         File.WriteAllText(copy, "{\"quality\":\"high\"}");
     }
 
+    [Fact]
+    public async Task Deployment_only_source_installs_the_requested_version_and_reloads_it_locally()
+    {
+        await using var publisher = new MockPublisher();
+        using var scope = new InstalledScope(publisher.Address + "source/");
+        publisher.Publish(("Mock/Mock.csx", """
+            return Pregel.Define<string>("mock", "1").Start(Echo).Compile();
+            static string Echo(string input, PregelNodeContext context, CancellationToken token) => input;
+            """));
+        var entry = (await new AutomationOfficialScripts().ListAsync()).Single();
+        var request = new RemoteAutomationDeployment
+        {
+            TaskId = RemoteAutomationOfficialScripts.TaskId(entry),
+            Source = new() { SourceId = entry.Id, Revision = entry.Revision, Sha256 = entry.ArchiveSha256,
+                SharedRevision = entry.SharedRevision, SharedSha256 = entry.SharedArchiveSha256 }
+        };
+        var previous = AutomationRuntime.ScriptSource;
+        AutomationRuntime.ScriptSource = new DeploymentOnlySource();
+        try
+        {
+            await using var host = new AutomationHost(new AutomationStore(scope.State), scope.Output,
+                true, null, null, null, schedulingEnabled: false);
+            var worker = new RemoteAutomationOfficialScripts(host, RemoteAutomationEnvironment.Current);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => host.Scripts.DownloadAndLoadAsync(entry.Path));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => worker.PrepareDeploymentAsync(
+                request with { Source = request.Source with { Sha256 = new string('0', 64) } }, CancellationToken.None));
+            File.Exists(entry.Path).Should().BeFalse();
+
+            var draft = await worker.PrepareDeploymentAsync(request, CancellationToken.None);
+            (await host.Scripts.LoadAsync(entry.Path)).Should().Be(draft.Template.Id);
+        }
+        finally { AutomationRuntime.ScriptSource = previous; }
+    }
+
+    private sealed class DeploymentOnlySource : IAutomationScriptSource
+    {
+        private readonly AutomationRemoteSource _source = new();
+        public string DirectoryLabel => "Mock source";
+        public string Url => _source.Url;
+        public string Root => _source.Root;
+        public string? Error => null;
+        public Task RefreshAsync(CancellationToken token) => Task.CompletedTask;
+        public string InstalledStamp(string path) => _source.InstalledStamp(path);
+        public IDisposable? AcquireReadLease(string path) => AutomationRemoteSource.AcquireReadLease(path);
+        public IReadOnlyList<AutomationScriptEntry> ListEntries(IReadOnlyList<AutomationScriptEntry> local,
+            Func<string, string?> loadedStamp) => [];
+        public Task InstallAsync(string path, Action<bool, Action> commit, CancellationToken token) =>
+            throw new InvalidOperationException("Interactive downloads are disabled");
+        public Task PrepareForLoadAsync(string path, Action<bool, Action> commit, CancellationToken token) => Task.CompletedTask;
+        public Task InstallForDeploymentAsync(string path, Action<bool, Action> commit, CancellationToken token) =>
+            _source.InstallAsync(path, commit, token);
+    }
+
     /// <summary>A loopback official source that serves a catalog and archives built from in-memory files.</summary>
     private sealed class MockPublisher : IAsyncDisposable
     {

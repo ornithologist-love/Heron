@@ -15,6 +15,8 @@ Scripts are selected by the registered task identity and installed root. A remot
 
 ## Published sources and snapshots
 
+The worker checks the deployment's requested source and Shared fingerprints before using the deployment install path and verifies the installed files before reporting readiness. The catalog exposes distinct operations for deployment, interactive downloads and local loading so an embedding host can restrict downloads to deployments and still load verified local files.
+
 Consistency of publisher-owned scripts comes from content verification, not from read-only marks. Installation verifies the archive and content hashes before it swaps the suite and `Shared` into place; every admission recomputes the installed content and the snapshot it runs. A changed, extended or partially deleted installation fails verification and is replaced by the verified publication; it never runs and never blocks the next delivery.
 
 Protection is a guardrail that does not travel with copies. Installed directories deny changes (an inherited Windows access rule, elsewhere no directory write permission); files carry neither the read-only attribute nor reduced modes, because both are copied with a file. A template or asset a script copies out of its package is therefore an ordinary writable file. Installations protected by earlier releases lose their file marks when they are next protected.
@@ -26,6 +28,8 @@ Storage stays bounded. A run start records use of its snapshot. Retention keeps 
 ## Delivery and logs
 
 Delivery identities are persisted before subsequent polls can replay them. Reconnection queries and reports the existing local run, retaining the child invocation and target. A worker or network restart does not cancel the detached execution process. A duplicate child invocation returns the original execution.
+
+An embedding host can attach an environment fingerprint at run admission. It is part of the persisted run record and travels in the existing run snapshot, so a retried report uses the original values. Fingerprints contain version or revision identifiers suitable for reporting.
 
 Log acknowledgements count original UTF-8 bytes, including the source line terminator. A CRLF source therefore retains the carriage return in its transmitted raw line. Only complete lines are acknowledged; a partial final line is held until completed. An acknowledgement received after a lost response advances the durable cursor without replaying an already acknowledged prefix. A terminal execution continues uploading until its complete log receipt is persisted.
 

@@ -104,19 +104,7 @@ internal sealed class RemoteAutomationOfficialScripts(AutomationHost automation,
                 var entry = Entries.FirstOrDefault(candidate => TaskId(candidate) == taskId)
                     ?? await PublishedEntryAsync(taskId, deadline.Token)
                     ?? throw new InvalidOperationException("官方目录中找不到此流程，请刷新目录后重试。");
-                using var admission = new AutomationStore(AutomationStore.DefaultRoot).TryAcquireExecution()
-                    ?? throw new InvalidOperationException("构建机正在维护或安装更新，请稍后重试。");
-                var templateId = await automation.Scripts.DownloadAndLoadAsync(entry.Path, deadline.Token);
-                deadline.Token.ThrowIfCancellationRequested();
-                var template = automation.Templates.Single(item => item.Id == templateId);
-                var task = new AutomationTask
-                {
-                    Id = taskId, TemplateId = templateId, Name = entry.Title,
-                    Parameters = template.Fields.Where(field => !field.IsReadOnly)
-                        .ToDictionary(field => field.Key, field => field.DefaultValue),
-                    ManualEnabled = true, ScheduleEnabled = false
-                };
-                return new Draft(task, template, Revision(entry));
+                return await PrepareEntryAsync(taskId, entry, deployment: false, deadline.Token);
             });
             // Observe failures even when the requesting browser leaves during preparation.
             _ = preparation.ContinueWith(failed => _ = failed.Exception, CancellationToken.None,
@@ -144,11 +132,29 @@ internal sealed class RemoteAutomationOfficialScripts(AutomationHost automation,
         var saved = automation.Tasks.FirstOrDefault(view => view.Task.Id == request.TaskId);
         if (saved != null && Conflict(saved.Task) is { } conflict)
             throw new InvalidOperationException(conflict);
-        var prepared = await Prepare(request.TaskId, token, reload: true).WaitAsync(token);
+        var prepared = await PrepareEntryAsync(request.TaskId, entry, deployment: true, token);
         var path = automation.Scripts.SavedScriptPath(prepared.Task.TemplateId)
             ?? throw new InvalidOperationException("部署后未找到可加载的流程入口。");
         VerifyDeploymentVersion(path, source);
         return prepared;
+    }
+
+    private async Task<Draft> PrepareEntryAsync(string taskId, AutomationOfficialScript entry, bool deployment, CancellationToken token)
+    {
+        using var admission = new AutomationStore(AutomationStore.DefaultRoot).TryAcquireExecution()
+            ?? throw new InvalidOperationException("构建机正在维护或安装更新，请稍后重试。");
+        var templateId = deployment ? await automation.Scripts.DeployAndLoadAsync(entry.Path, token)
+            : await automation.Scripts.LoadAsync(entry.Path, token);
+        token.ThrowIfCancellationRequested();
+        var template = automation.Templates.Single(item => item.Id == templateId);
+        var task = new AutomationTask
+        {
+            Id = taskId, TemplateId = templateId, Name = entry.Title,
+            Parameters = template.Fields.Where(field => !field.IsReadOnly)
+                .ToDictionary(field => field.Key, field => field.DefaultValue),
+            ManualEnabled = true, ScheduleEnabled = false
+        };
+        return new Draft(task, template, Revision(entry));
     }
 
     internal static void VerifyDeploymentVersion(string path, RemoteAutomationDeploymentSource source)

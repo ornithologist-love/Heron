@@ -27,7 +27,14 @@ public sealed partial class AutomationScriptCatalog
         finally { _operations.Release(); }
     }
 
-    public async Task<string> DownloadAndLoadAsync(string path, CancellationToken token = default)
+    public Task<string> DownloadAndLoadAsync(string path, CancellationToken token = default) =>
+        DownloadAndLoadAsync(path, deployment: false, token);
+
+    /// <summary>Loads a publisher entry selected by the remote worker's deployment path.</summary>
+    public Task<string> DeployAndLoadAsync(string path, CancellationToken token = default) =>
+        DownloadAndLoadAsync(path, deployment: true, token);
+
+    private async Task<string> DownloadAndLoadAsync(string path, bool deployment, CancellationToken token)
     {
         var source = _source ?? throw new InvalidOperationException("没有配置脚本源");
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _lifetime.Token);
@@ -36,7 +43,7 @@ public sealed partial class AutomationScriptCatalog
         {
             EnsureWritable();
             await source.RefreshAsync(linked.Token);
-            await source.InstallAsync(path, (sharedChanged, commit) =>
+            void Commit(bool sharedChanged, Action commit)
             {
                 // Shared replacement protects every loaded remote suite, not just the selected entry.
                 string[] ids;
@@ -44,7 +51,9 @@ public sealed partial class AutomationScriptCatalog
                     || AutomationScriptLoader.EntryKey(p.Key).Equals(AutomationScriptLoader.EntryKey(path), StringComparison.OrdinalIgnoreCase)))
                     .Select(p => p.Value.Id).ToArray();
                 _host.CommitScriptSourceChange(ids, commit);
-            }, linked.Token);
+            }
+            if (deployment) await source.InstallForDeploymentAsync(path, Commit, linked.Token);
+            else await source.InstallAsync(path, Commit, linked.Token);
             return await ChangeScriptAsync(path, true, linked.Token);
         }
         catch (Exception ex) when (ex is not AutomationScriptInUseException)

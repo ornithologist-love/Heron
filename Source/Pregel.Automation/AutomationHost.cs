@@ -416,20 +416,31 @@ public sealed partial class AutomationHost : IAutomationRegistry, IAsyncDisposab
         string? remoteRequestId)
         => StartRunCore(taskId, trigger, parameters, null, null, remoteRequestId);
 
+    public string? StartRun(string taskId, string trigger, IReadOnlyDictionary<string, string>? parameters,
+        string? remoteRequestId, IReadOnlyDictionary<string, string>? environmentFingerprint)
+        => StartRunCore(taskId, trigger, parameters, null, null, remoteRequestId, environmentFingerprint: environmentFingerprint);
+
     public string? StartSubgraphRun(string taskId, string trigger, IReadOnlyDictionary<string, string>? rootParameters,
         string remoteRequestId, PregelSubgraphExecutionRequest subgraph)
+        => StartSubgraphRun(taskId, trigger, rootParameters, remoteRequestId, subgraph, null);
+
+    public string? StartSubgraphRun(string taskId, string trigger, IReadOnlyDictionary<string, string>? rootParameters,
+        string remoteRequestId, PregelSubgraphExecutionRequest subgraph, IReadOnlyDictionary<string, string>? environmentFingerprint)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(remoteRequestId);
         ArgumentNullException.ThrowIfNull(subgraph);
-        return StartRunCore(taskId, trigger, rootParameters, null, null, remoteRequestId, CopySubgraph(subgraph));
+        return StartRunCore(taskId, trigger, rootParameters, null, null, remoteRequestId, CopySubgraph(subgraph),
+            environmentFingerprint: environmentFingerprint);
     }
 
     private string? StartRunCore(string taskId, string trigger, IReadOnlyDictionary<string, string>? parameters,
         string? sourceRunId, Heron.Pregel.PregelReexecutionRequest? reexecution, string? remoteRequestId = null,
         PregelSubgraphExecutionRequest? subgraph = null, Heron.Pregel.PregelManualSkip? manualSkip = null,
-        DateTimeOffset? scheduledFor = null)
+        DateTimeOffset? scheduledFor = null, IReadOnlyDictionary<string, string>? environmentFingerprint = null)
     {
         EnsureActive();
+        if (environmentFingerprint != null)
+            environmentFingerprint = new Dictionary<string, string>(environmentFingerprint);
         var rejected = false;
         string? runId = null;
         lock (_gate)
@@ -472,7 +483,7 @@ public sealed partial class AutomationHost : IAutomationRegistry, IAsyncDisposab
             catch (Exception error) { problem = error.Message; }
             if (problem != null)
             {
-                var record = RecordRejected(task, trigger, problem, remoteRequestId, subgraph);
+                var record = RecordRejected(task, trigger, problem, remoteRequestId, subgraph, environmentFingerprint);
                 if (remoteRequestId != null) runId = record.RunId;
                 rejected = true;
             }
@@ -488,6 +499,7 @@ public sealed partial class AutomationHost : IAutomationRegistry, IAsyncDisposab
                     OwnerStartedUtcTicks = ProcessStartedUtcTicks,
                     Revision = 1, RemoteRequestId = remoteRequestId, Subgraph = subgraph,
                     ExecutionVersion = (template as AutomationScriptTemplate)?.ExecutionVersion,
+                    EnvironmentFingerprint = environmentFingerprint,
                     ScheduledFor = scheduledFor,
                     ScheduleOccurrenceKey = scheduledFor == null ? null : "local:" + task.Id + ":" + scheduledFor.Value.ToUniversalTime().ToString("O"),
                     SourceRunId = sourceRunId, ReexecutionMode = reexecution?.Mode.ToString(),
@@ -966,7 +978,7 @@ public sealed partial class AutomationHost : IAutomationRegistry, IAsyncDisposab
     }
 
     private AutomationRunRecord RecordRejected(AutomationTask task, string trigger, string problem, string? remoteRequestId,
-        PregelSubgraphExecutionRequest? subgraph = null)
+        PregelSubgraphExecutionRequest? subgraph, IReadOnlyDictionary<string, string>? environmentFingerprint)
     {
         var now = DateTimeOffset.Now;
         var record = new AutomationRunRecord
@@ -974,6 +986,7 @@ public sealed partial class AutomationHost : IAutomationRegistry, IAsyncDisposab
             RunId = $"{_now():yyyyMMdd-HHmmss}-{Guid.NewGuid():N}"[..28], TaskId = task.Id, Trigger = trigger,
             QueuedAt = now, StartedAt = now, EndedAt = now, Status = AutomationRunStatus.Skipped, Summary = problem,
             Revision = 1, RemoteRequestId = remoteRequestId, Subgraph = subgraph,
+            EnvironmentFingerprint = environmentFingerprint,
             TaskSnapshot = task,
             Launch = task.ParametersResolved && _templates.TryGetValue(task.TemplateId, out var template)
                 ? AutomationLaunchSnapshot.Capture(template, task, Scripts.SavedScriptRevision(task.TemplateId), AutomationRuntime.PublishedTask?.Invoke(this, task)) : null

@@ -135,4 +135,12 @@ public interface IAutomationScriptSource
     /// files change, and must run the commit action once the affected scripts can be replaced.
     /// </summary>
     Task InstallAsync(string path, Action<bool, Action> commit, CancellationToken token);
+
+    /// <summary>Prepares the source before loading a local entry. Policies may restrict this to installed files.</summary>
+    Task PrepareForLoadAsync(string path, Action<bool, Action> commit, CancellationToken token) =>
+        InstallAsync(path, commit, token);
+
+    /// <summary>Installs an entry selected by the remote worker after checking its deployment request.</summary>
+    Task InstallForDeploymentAsync(string path, Action<bool, Action> commit, CancellationToken token) =>
+        InstallAsync(path, commit, token);
 }

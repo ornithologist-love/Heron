@@ -57,6 +57,7 @@ public sealed class WorkerReconnectTests
             await second.WaitAsync(TimeSpan.FromSeconds(10));
 
             peer.Received.ToArray().Should().Equal(original);
+            peer.ReportedFingerprint.Should().Be("mock-revision");
             peer.UploadOffsets.Count.Should().BeGreaterThanOrEqualTo(2);
             peer.UploadOffsets.Take(2).Should().OnlyContain(offset => offset == 0, "the first acknowledgement was lost before persistence");
         }
@@ -84,6 +85,7 @@ public sealed class WorkerReconnectTests
         public string Address { get; } = LocalEndpoint.Address();
         public MemoryStream Received { get; } = new();
         public List<long> UploadOffsets { get; } = [];
+        public string? ReportedFingerprint { get; private set; }
         public TaskCompletionSource LostAcknowledgement { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Completed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -127,7 +129,8 @@ public sealed class WorkerReconnectTests
                         {
                             TaskId = _task.Id, RunId = "mock-local-run", TaskSnapshot = _task,
                             QueuedAt = DateTimeOffset.UtcNow, Status = AutomationRunStatus.Succeeded,
-                            Revision = 1, EvidenceDirectories = [_evidence]
+                            Revision = 1, EvidenceDirectories = [_evidence],
+                            EnvironmentFingerprint = new Dictionary<string, string> { ["config_revision"] = "mock-revision" }
                         });
                     }
                     response = new { task_catalog = new[] { new { id = _task.Id, name = "Mock", definition_ids = new[] { _task.TemplateId } } } };
@@ -153,7 +156,12 @@ public sealed class WorkerReconnectTests
                     }
                     else
                     {
-                        if (body.RootElement.TryGetProperty("logs_complete", out var complete) && complete.GetBoolean()) Completed.TrySetResult();
+                        if (body.RootElement.TryGetProperty("logs_complete", out var complete) && complete.GetBoolean())
+                        {
+                            ReportedFingerprint = body.RootElement.GetProperty("snapshot").GetProperty("environment_fingerprint")
+                                .GetProperty("config_revision").GetString();
+                            Completed.TrySetResult();
+                        }
                         response = new { };
                     }
                 }

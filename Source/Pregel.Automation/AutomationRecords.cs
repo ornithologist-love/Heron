@@ -46,6 +46,8 @@ public sealed record AutomationRunRecord
     public string Trigger { get; init; } = "";
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AutomationExecutionVersion? ExecutionVersion { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? EnvironmentFingerprint { get; init; }
     public DateTimeOffset? ScheduledFor { get; init; }
     public string? ScheduleOccurrenceKey { get; init; }
 
