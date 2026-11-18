@@ -67,7 +67,7 @@ func (s *service) deploymentSource(ctx context.Context, tenant tenantConfig, tas
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.config.ScriptSourceURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tenant.ScriptSourceURL, nil)
 	if err != nil {
 		return DeploymentSource{}, fault(503, "官方发布目录配置无效。")
 	}

@@ -21,18 +21,21 @@ type poolConfig struct {
 }
 
 type tenantConfig struct {
-	ApprovedWorkflowsPath string            `json:"-"`
-	ID                    string            `json:"id"`
-	Name                  string            `json:"name"`
-	Admins                []string          `json:"admins"`
-	LegacyMaxParallel     int               `json:"max_parallel"`
-	DefaultPool           string            `json:"default_pool"`
-	ServerMachine         string            `json:"server_machine"`
-	ResourceServerURL     string            `json:"resource_server_url"`
-	Pools                 []poolConfig      `json:"pools"`
-	Tasks                 []TaskDefinition  `json:"tasks,omitempty"`
-	TeamExecution         *teamExecution    `json:"team_execution,omitempty"`
-	EventHooks            []eventHookConfig `json:"event_hooks,omitempty"`
+	ApprovedWorkflowsPath string   `json:"approved_workflows_path,omitempty"`
+	ID                    string   `json:"id"`
+	Name                  string   `json:"name"`
+	Admins                []string `json:"admins"`
+	LegacyMaxParallel     int      `json:"max_parallel"`
+	DefaultPool           string   `json:"default_pool"`
+	ServerMachine         string   `json:"server_machine"`
+	ResourceServerURL     string   `json:"resource_server_url"`
+	// ScriptSourceURL selects this tenant's published catalog (for example an eval question bank);
+	// empty means the global script_source_url.
+	ScriptSourceURL string            `json:"script_source_url,omitempty"`
+	Pools           []poolConfig      `json:"pools"`
+	Tasks           []TaskDefinition  `json:"tasks,omitempty"`
+	TeamExecution   *teamExecution    `json:"team_execution,omitempty"`
+	EventHooks      []eventHookConfig `json:"event_hooks,omitempty"`
 }
 
 type config struct {
@@ -68,6 +71,13 @@ func machineName(value string) (string, error) {
 	return value, nil
 }
 
+// A published catalog is a plain HTTP(S) address configured on the server: no credentials, query or fragment.
+func validSourceURL(value string) bool {
+	source, err := url.Parse(value)
+	return err == nil && source.User == nil && source.RawQuery == "" && source.Fragment == "" &&
+		(source.Scheme == "http" || source.Scheme == "https") && source.Host != ""
+}
+
 func loadConfig(filename string) (config, error) {
 	var c config
 	data, err := os.ReadFile(filename)
@@ -86,9 +96,7 @@ func loadConfig(filename string) (config, error) {
 	if c.ScriptSourceURL == "" {
 		c.ScriptSourceURL = "http://127.0.0.1:5173/api/automation-scripts/catalog.json"
 	}
-	source, sourceErr := url.Parse(c.ScriptSourceURL)
-	if sourceErr != nil || source.User != nil || source.RawQuery != "" || source.Fragment != "" ||
-		(source.Scheme != "http" && source.Scheme != "https") || source.Host == "" {
+	if !validSourceURL(c.ScriptSourceURL) {
 		return c, errors.New("script_source_url 必须是服务端配置的 HTTP(S) 官方发布目录")
 	}
 	host, _, err := net.SplitHostPort(c.Listen)
@@ -114,7 +122,17 @@ func loadConfig(filename string) (config, error) {
 	}
 	c.tenantByID = map[string]tenantConfig{}
 	for index, tenant := range c.Tenants {
-		tenant.ApprovedWorkflowsPath = c.ApprovedWorkflowsPath
+		// A tenant bound to its own published library (script_source_url) also reads that library's ledger.
+		if tenant.ApprovedWorkflowsPath == "" {
+			tenant.ApprovedWorkflowsPath = c.ApprovedWorkflowsPath
+		} else {
+			if !filepath.IsAbs(tenant.ApprovedWorkflowsPath) {
+				tenant.ApprovedWorkflowsPath = filepath.Join(filepath.Dir(filename), tenant.ApprovedWorkflowsPath)
+			}
+			if _, err = readWorkflowCatalog(tenant.ApprovedWorkflowsPath); err != nil {
+				return c, fmt.Errorf("租户 %s 的已审核流程目录无法读取", tenant.ID)
+			}
+		}
 		if tenant.Tasks == nil {
 			return c, errors.New("请显式配置租户 tasks 任务目录；机器上报不能创建云端任务")
 		}
@@ -148,6 +166,11 @@ func loadConfig(filename string) (config, error) {
 				return c, errors.New("resource_server_url 只允许 loopback 地址")
 			}
 			tenant.ResourceServerURL = strings.TrimRight(address.String(), "/")
+		}
+		if tenant.ScriptSourceURL == "" {
+			tenant.ScriptSourceURL = c.ScriptSourceURL
+		} else if !validSourceURL(tenant.ScriptSourceURL) {
+			return c, fmt.Errorf("租户 %s 的 script_source_url 必须是服务端配置的 HTTP(S) 发布目录", tenant.ID)
 		}
 		if _, exists := c.tenantByID[tenant.ID]; exists {
 			return c, errors.New("tenant id 重复")

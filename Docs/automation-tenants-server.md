@@ -35,6 +35,8 @@ The reader accepts this schema, with a map key opaque to the service:
 {"schema":1,"published":{"opaque-publication":{"tenant_id":"orchard","task_id":"mock-task","title":"Mock task","definition_id":"mock-graph"}}}
 ```
 
+<a id="tenant-script-source"></a>A tenant may bind its own published library: its optional `script_source_url` replaces the global catalog for deployments, and its optional `approved_workflows_path` replaces the global ledger. Unset fields fall back to the global values, so existing tenants are unchanged. A deployment only resolves a task from its own tenant's catalog and only when the package names that tenant as owner, so a parallel library (for example an evaluation question bank) can never deploy into another tenant.
+
 Only `published` can register a workflow, and only in its matching tenant with a nonempty task identity and title. Pending submissions and unrelated fields cannot register work. The definition identity belongs to the publisher; the service does not use it to evaluate code. The publisher atomically replaces the ledger. If an already loaded ledger temporarily cannot be read, the service retains its last admitted catalog rather than exposing unreviewed state; an invalid ledger prevents initial startup.
 
 ## Delivery boundary

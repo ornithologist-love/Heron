@@ -310,3 +310,55 @@ func TestRecoveryDiscardsOnlyAnIncompleteJournalTail(t *testing.T) {
 		t.Fatal("an invalid complete record must be an error, not silently skipped")
 	}
 }
+
+// Anchor: Docs/automation-tenants-server.md#tenant-script-source
+func TestEachTenantDeploysOnlyFromItsOwnPublishedLibrary(t *testing.T) {
+	feed := func(owner string) *httptest.Server {
+		body := `{"shared":{"id":"Shared","revision":"s1","sha256":"` + strings.Repeat("b", 64) + `"},` +
+			`"scripts":[{"id":"Q1","taskId":"job","tenantId":"` + owner + `","revision":"r1","sha256":"` + strings.Repeat("a", 64) + `"}]}`
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, body) }))
+	}
+	official, eval := feed("orchard"), feed("meadow")
+	defer official.Close()
+	defer eval.Close()
+	root := t.TempDir()
+	c := config{Directory: filepath.Join(root, "state"), DefaultTenant: "orchard", Protocol: mockProtocol(), ScriptSourceURL: official.URL}
+	for _, id := range []string{"orchard", "meadow"} {
+		tenant := tenantConfig{ID: id, Admins: []string{"operator"}, Tasks: []TaskDefinition{{ID: "job", Name: "Mock job"}},
+			Pools: []poolConfig{{Pool: Pool{ID: "pool"}, MachineNames: []string{id + "-box"}}}}
+		if id == "meadow" {
+			tenant.ScriptSourceURL = eval.URL
+		}
+		c.Tenants = append(c.Tenants, tenant)
+	}
+	data, _ := json.Marshal(c)
+	filename := filepath.Join(root, "config.json")
+	if err := os.WriteFile(filename, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	c, err := loadConfig(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &service{config: c}
+	for _, id := range []string{"orchard", "meadow"} {
+		source, err := s.deploymentSource(context.Background(), c.tenantByID[id], "job")
+		if err != nil || source.SourceID != "Q1" {
+			t.Fatalf("%s did not deploy from its own library: %+v %v", id, source, err)
+		}
+	}
+	// A library owned by another tenant never resolves, even if a tenant is pointed at it.
+	wrong := c.tenantByID["orchard"]
+	wrong.ScriptSourceURL = eval.URL
+	if _, err := s.deploymentSource(context.Background(), wrong, "job"); err == nil {
+		t.Fatal("deployed a package owned by another tenant")
+	}
+	c.Tenants[0].ScriptSourceURL = "http://user:secret@host/catalog.json"
+	data, _ = json.Marshal(c)
+	if err := os.WriteFile(filename, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadConfig(filename); err == nil {
+		t.Fatal("accepted a tenant script_source_url with credentials")
+	}
+}
