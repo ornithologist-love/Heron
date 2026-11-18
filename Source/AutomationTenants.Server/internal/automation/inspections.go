@@ -71,8 +71,8 @@ func (s *service) queueInspection(tenant, name string, request CreateRequest) (*
 	if strings.EqualFold(name, s.config.tenantByID[tenant].ServerMachine) && !slices.Contains(machine.Capabilities, serverCapability) {
 		return nil, fault(409, "配置的服务器尚未上报 Pregel 父图宿主能力，请启动服务器执行进程。")
 	}
-	assigned, err := s.config.assign(machine.MachineName)
-	if err != nil || assigned.TenantID != tenant || assigned.PoolID != machine.PoolID {
+	assigned, err := s.assignMachine(machine.MachineName, tenant)
+	if err != nil || assigned.PoolID != machine.PoolID {
 		return nil, fault(409, "机器归属已变更，请刷新目录。")
 	}
 	if !slices.Contains(machine.Capabilities, "pregel.inspect.v1") {
@@ -103,10 +103,6 @@ func (s *service) reportInspection(id string, report InspectionReport) (map[stri
 	if err != nil {
 		return nil, err
 	}
-	assigned, err := s.config.assign(name)
-	if err != nil {
-		return nil, err
-	}
 	if len(report.Error) > 8000 || report.Error == "" &&
 		(!bytes.HasPrefix(bytes.TrimSpace(report.Result), []byte("{")) || !json.Valid(report.Result)) {
 		return nil, fault(400, "参数与流程图投影格式无效。")
@@ -118,7 +114,8 @@ func (s *service) reportInspection(id string, report InspectionReport) (map[stri
 		// A browser may leave or time out while the machine is preparing its projection.
 		return map[string]bool{"accepted": false}, nil
 	}
-	if inspection.assignment != assigned || !strings.EqualFold(inspection.machineName, name) {
+	assigned, err := s.assignMachine(name, inspection.assignment.TenantID)
+	if err != nil || inspection.assignment != assigned || !strings.EqualFold(inspection.machineName, name) {
 		return nil, fault(403, "预览请求不属于这台机器。")
 	}
 	delete(s.inspections, id)

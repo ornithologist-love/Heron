@@ -133,15 +133,18 @@ type PollRequest struct {
 }
 
 type RunRequest struct {
-	DeploymentSource    *DeploymentSource    `json:"deployment_source,omitempty"`
-	ID                  string               `json:"id"`
-	TaskID              string               `json:"task_id"`
-	Parameters          map[string]string    `json:"parameters"`
-	CancelRequested     bool                 `json:"cancel_requested"`
-	State               string               `json:"state"`
-	Subgraph            json.RawMessage      `json:"subgraph,omitempty"`
-	CancellationFailure *CancellationFailure `json:"cancellation_failure,omitempty"`
-	ScheduledFor        *time.Time           `json:"scheduled_for,omitempty"`
+	TenantID                    string               `json:"tenant_id,omitempty"`
+	ResourceCoordinationEnabled bool                 `json:"resource_coordination_enabled,omitempty"`
+	DeploymentCatalogPath       string               `json:"deployment_catalog_path,omitempty"`
+	DeploymentSource            *DeploymentSource    `json:"deployment_source,omitempty"`
+	ID                          string               `json:"id"`
+	TaskID                      string               `json:"task_id"`
+	Parameters                  map[string]string    `json:"parameters"`
+	CancelRequested             bool                 `json:"cancel_requested"`
+	State                       string               `json:"state"`
+	Subgraph                    json.RawMessage      `json:"subgraph,omitempty"`
+	CancellationFailure         *CancellationFailure `json:"cancellation_failure,omitempty"`
+	ScheduledFor                *time.Time           `json:"scheduled_for,omitempty"`
 }
 
 type ChildRequest struct {

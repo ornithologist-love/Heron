@@ -24,13 +24,14 @@ type tenantState struct {
 }
 
 type store struct {
-	mu        sync.Mutex
-	directory string
-	states    map[string]*tenantState
-	logs      map[string]*runLogs
-	lock      io.Closer
-	hooks     map[string][]eventHookConfig
-	wake      chan struct{}
+	mu          sync.Mutex
+	directory   string
+	states      map[string]*tenantState
+	memberships map[string][]assignment
+	logs        map[string]*runLogs
+	lock        io.Closer
+	hooks       map[string][]eventHookConfig
+	wake        chan struct{}
 	// When each machine's last-seen time last reached disk, keyed by tenant and machine.
 	seenOnDisk map[string]time.Time
 }
@@ -45,6 +46,10 @@ func openStore(c config) (*store, error) {
 	}
 	s := &store{directory: c.Directory, states: map[string]*tenantState{}, logs: map[string]*runLogs{}, lock: lock,
 		hooks: map[string][]eventHookConfig{}, wake: make(chan struct{}, 1), seenOnDisk: map[string]time.Time{}}
+	if err := s.loadMemberships(c); err != nil {
+		lock.Close()
+		return nil, err
+	}
 	for _, tenant := range c.Tenants {
 		state := &tenantState{SchemaVersion: 1, TenantID: tenant.ID, Machines: map[string]Machine{}, Runs: map[string]RemoteRun{}}
 		path := s.stateFile(tenant.ID)

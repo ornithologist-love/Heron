@@ -39,16 +39,17 @@ type tenantConfig struct {
 }
 
 type config struct {
-	Protocol              protocolConfig `json:"protocol,omitempty"`
-	MCP                   *mcpConfig     `json:"mcp,omitempty"`
-	ScriptSourceURL       string         `json:"script_source_url,omitempty"`
-	ApprovedWorkflowsPath string         `json:"approved_workflows_path,omitempty"`
-	Listen                string         `json:"listen"`
-	Directory             string         `json:"directory"`
-	DefaultTenant         string         `json:"default_tenant"`
-	Tenants               []tenantConfig `json:"tenants"`
-	assignments           map[string]assignment
-	tenantByID            map[string]tenantConfig
+	Protocol                   protocolConfig `json:"protocol,omitempty"`
+	MCP                        *mcpConfig     `json:"mcp,omitempty"`
+	ScriptSourceURL            string         `json:"script_source_url,omitempty"`
+	ApprovedWorkflowsPath      string         `json:"approved_workflows_path,omitempty"`
+	Listen                     string         `json:"listen"`
+	Directory                  string         `json:"directory"`
+	DefaultTenant              string         `json:"default_tenant"`
+	AllowDefaultTenantFallback bool           `json:"allow_default_tenant_fallback,omitempty"`
+	Tenants                    []tenantConfig `json:"tenants"`
+	assignments                map[string]assignment
+	tenantByID                 map[string]tenantConfig
 }
 
 type assignment struct {
@@ -230,6 +231,9 @@ func loadConfig(filename string) (config, error) {
 			return c, errors.New("default_tenant 不在 tenants 中")
 		}
 	}
+	if c.AllowDefaultTenantFallback && c.tenantByID[c.DefaultTenant].DefaultPool == "" {
+		return c, errors.New("allow_default_tenant_fallback 需要配置 default_tenant 及其 default_pool")
+	}
 	if c.MCP != nil {
 		if !clean(c.MCP.BearerToken, 512) || strings.ContainsFunc(c.MCP.BearerToken, unicode.IsSpace) {
 			return c, errors.New("MCP bearer_token 不能包含空白或控制字符，且不能超过 512 字节")
@@ -286,7 +290,7 @@ func (c config) assign(name string) (assignment, error) {
 	if mapped, exists := c.assignments[strings.ToLower(name)]; exists {
 		return mapped, nil
 	}
-	if len(c.Tenants) == 1 && c.DefaultTenant != "" {
+	if (len(c.Tenants) == 1 || c.AllowDefaultTenantFallback) && c.DefaultTenant != "" {
 		tenant := c.tenantByID[c.DefaultTenant]
 		if tenant.DefaultPool != "" {
 			return assignment{tenant.ID, tenant.DefaultPool}, nil

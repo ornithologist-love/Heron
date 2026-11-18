@@ -241,12 +241,17 @@ func ignoredObservationID(machine, run string) string {
 // Old Agents may still finish transmitting quarantined observations. Acknowledge
 // their transport without recreating a cloud task, run, or log file.
 func (s *service) ignoredRun(machine, id string) bool {
-	assigned, err := s.config.assign(machine)
-	if err != nil {
+	assignments := s.machineAssignments(machine)
+	if len(assignments) == 0 {
 		return false
 	}
 	if len(id) == len("ignored.")+32 && strings.HasPrefix(id, "ignored.") && runID.MatchString(strings.TrimPrefix(id, "ignored.")) {
 		return true
 	}
-	return strings.EqualFold(s.store.states[assigned.TenantID].IgnoredRuns[id], machine)
+	for _, assigned := range assignments {
+		if strings.EqualFold(s.store.states[assigned.TenantID].IgnoredRuns[id], machine) {
+			return true
+		}
+	}
+	return false
 }

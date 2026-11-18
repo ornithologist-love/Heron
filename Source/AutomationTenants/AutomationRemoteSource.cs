@@ -12,9 +12,14 @@ public sealed record AutomationRemotePackage(string Id, string Revision, string 
     string Entry = "", string Title = "", string Description = "", string? TaskId = null, string? TenantId = null);
 public sealed record AutomationRemoteManifest(AutomationRemotePackage Shared, AutomationRemotePackage[] Scripts);
 
+internal sealed class AutomationSourceBusyException(IOException inner) : IOException(
+    "脚本源正在更新或有脚本运行，请完成后再更新 / 重新加载", inner);
+
 /// <summary>Official, publisher-owned scripts. Download never evaluates source code.</summary>
 public sealed class AutomationRemoteSource : IAutomationScriptSource
 {
+    private static readonly AsyncLocal<string?> DeploymentSource = new();
+    internal const string DeploymentCatalogVariable = "HERON_AUTOMATION_DEPLOYMENT_CATALOG";
     public const string DirectoryLabel = "官方远程脚本源";
     string IAutomationScriptSource.DirectoryLabel => DirectoryLabel;
     public string Url => DefaultUrl;
@@ -42,7 +47,36 @@ public sealed class AutomationRemoteSource : IAutomationScriptSource
                 SourceInfo = $"远程 revision {package.Revision} · 本地 revision {(installed.Length == 0 ? "未下载" : installed.Split(':')[0])} · Shared revision {Manifest.Shared.Revision}"
             };
         }).ToArray() ?? [];
-    public static string DefaultUrl => RemoteAutomationEnvironment.Current.OfficialSourceUrl;
+    public static string DefaultUrl => DeploymentSource.Value ?? ProcessDeploymentSource() ?? RemoteAutomationEnvironment.Current.OfficialSourceUrl;
+    internal static IDisposable EnterDeploymentSource(string server, string catalogPath)
+    {
+        var prior = DeploymentSource.Value;
+        DeploymentSource.Value = ResolveDeploymentSource(server, catalogPath);
+        return new DeploymentScope(prior);
+    }
+
+    private static string ResolveDeploymentSource(string server, string catalogPath)
+    {
+        if (!Uri.TryCreate(server, UriKind.Absolute, out var authority)
+            || !catalogPath.StartsWith('/') || catalogPath.StartsWith("//", StringComparison.Ordinal)
+            || catalogPath.Contains('\\') || !Uri.TryCreate(authority, catalogPath, out var catalog)
+            || catalog.GetLeftPart(UriPartial.Authority) != authority.GetLeftPart(UriPartial.Authority)
+            || catalog.Query.Length != 0 || catalog.Fragment.Length != 0
+            || !catalog.AbsolutePath.EndsWith("/catalog.json", StringComparison.Ordinal))
+            throw new InvalidDataException("派发指定的脚本目录无效。");
+        return catalog.AbsoluteUri[..^"catalog.json".Length];
+    }
+
+    private static string? ProcessDeploymentSource()
+    {
+        var catalog = Environment.GetEnvironmentVariable(DeploymentCatalogVariable);
+        return string.IsNullOrEmpty(catalog) ? null : ResolveDeploymentSource(RemoteSubgraphExecutor.ResolveServer(""), catalog);
+    }
+
+    private sealed class DeploymentScope(string? prior) : IDisposable
+    {
+        public void Dispose() => DeploymentSource.Value = prior;
+    }
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(2) };
     public string Root { get; } = RemoteAutomationEnvironment.Current.ScriptsRoot();
@@ -138,7 +172,7 @@ public sealed class AutomationRemoteSource : IAutomationScriptSource
             try { using var created = new FileStream(lockFile, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite); }
             catch (IOException) when (File.Exists(lockFile)) { }
         try { return new FileStream(lockFile, FileMode.Open, access, share); }
-        catch (IOException ex) { throw new IOException("脚本源正在更新或有脚本运行，请完成后再更新 / 重新加载", ex); }
+        catch (IOException ex) { throw new AutomationSourceBusyException(ex); }
     }
 
     public async Task EnsurePathAsync(string path, Action<Action> commit, CancellationToken token)

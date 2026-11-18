@@ -117,13 +117,13 @@ func (s *service) workflowIdentity(actor string, request workflowIdentityRequest
 	}
 	kind, user := "human", strings.TrimSpace(actor)
 	if request.MachineUser {
-		assigned, assignErr := s.config.assign(name)
-		if assignErr != nil || assigned.TenantID != tenant.ID {
-			return nil, fault(403, "机器不属于目标租户。")
-		}
 		s.store.mu.Lock()
+		_, assignErr := s.assignMachine(name, tenant.ID)
 		_, known := s.store.states[tenant.ID].Machines[strings.ToLower(name)]
 		s.store.mu.Unlock()
+		if assignErr != nil {
+			return nil, assignErr
+		}
 		if !known {
 			return nil, fault(403, "构建机虚拟用户只允许已登记机器提交。")
 		}

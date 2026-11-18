@@ -11,7 +11,9 @@ The Go service owns tenant and machine-pool assignment, dispatch receipts, durab
 
 The service listens only on loopback. An embedding HTTP host verifies human identity before forwarding an actor; the service applies the configured tenant and task scope. Machine names keep their existing registration contract. The service introduces no device authentication or credential issuance.
 
-A machine's configured assignment determines its tenant and pool. Agent requests cannot select another tenant, read another tenant's runs or append to its logs. Native snapshots remain opaque execution evidence rather than another server-side step state machine. A remote subgraph request retains its registered root and encoded input; the Worker validates executable identity.
+A machine can belong to multiple tenants and has one pool in each of them. The control service delivers the union of its assigned work in one poll. Every run and receipt stays with the tenant that issued it, so membership in multiple tenants does not merge their catalogs or records. Native snapshots remain opaque execution evidence rather than another server-side step state machine. A remote subgraph request retains its registered root and encoded input; the Worker validates executable identity.
+
+The host's administrator can replace a machine's memberships while the server is running. These assignments are durable and take precedence over the bootstrap machine list. The service prevents removing membership that still owns active execution or unfinished delivery. With one tenant, an unlisted machine can use its default pool. With multiple tenants, unlisted machines require an explicit host opt-in (`allow_default_tenant_fallback`) to use the configured default tenant and its default pool.
 
 ## Durability
 

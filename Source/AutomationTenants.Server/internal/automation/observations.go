@@ -13,10 +13,6 @@ func (s *service) observe(request ObservationRequest) (ObservationReceipt, error
 	if err != nil {
 		return ObservationReceipt{}, err
 	}
-	assigned, err := s.config.assign(name)
-	if err != nil {
-		return ObservationReceipt{}, err
-	}
 	header, present, err := snapshotInfo(request.Snapshot)
 	if err != nil {
 		return ObservationReceipt{}, err
@@ -38,6 +34,11 @@ func (s *service) observe(request ObservationRequest) (ObservationReceipt, error
 	}
 
 	s.store.mu.Lock()
+	assigned, err := s.assignLocalRun(name, header.RemoteRequestID, header.RunID, request.TaskID)
+	if err != nil {
+		s.store.mu.Unlock()
+		return ObservationReceipt{}, err
+	}
 	tenant := s.config.tenantByID[assigned.TenantID]
 	definitionID := ""
 	if header.TaskSnapshot != nil {

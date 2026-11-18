@@ -185,11 +185,45 @@ public sealed class PublishedSourceStoreTests
             var worker = new RemoteAutomationOfficialScripts(host, RemoteAutomationEnvironment.Current);
             await Assert.ThrowsAsync<InvalidOperationException>(() => host.Scripts.DownloadAndLoadAsync(entry.Path));
             await Assert.ThrowsAsync<InvalidOperationException>(() => worker.PrepareDeploymentAsync(
-                request with { Source = request.Source with { Sha256 = new string('0', 64) } }, CancellationToken.None));
+                request with { Source = request.Source with { Sha256 = new string('0', 64) } }, publisher.Address, CancellationToken.None));
             File.Exists(entry.Path).Should().BeFalse();
 
-            var draft = await worker.PrepareDeploymentAsync(request, CancellationToken.None);
+            var draft = await worker.PrepareDeploymentAsync(request, publisher.Address, CancellationToken.None);
             (await host.Scripts.LoadAsync(entry.Path)).Should().Be(draft.Template.Id);
+        }
+        finally { AutomationRuntime.ScriptSource = previous; }
+    }
+
+    // Anchor: Docs/automation-tenants.md#delivery-and-logs
+    [Fact]
+    public async Task Deployment_uses_its_assigned_catalog_without_switching_the_default_source()
+    {
+        await using var publisher = new MockPublisher();
+        using var scope = new InstalledScope(publisher.Address + "different/");
+        publisher.Publish(("Mock/Mock.csx", """
+            return Pregel.Define<string>("mock", "1").Start(Echo).Compile();
+            static string Echo(string input, PregelNodeContext context, CancellationToken token) => input;
+            """));
+        const string catalogPath = "/source/catalog.json";
+        AutomationOfficialScript entry;
+        using (AutomationRemoteSource.EnterDeploymentSource(publisher.Address, catalogPath))
+            entry = (await new AutomationOfficialScripts().ListAsync()).Single();
+        var request = new RemoteAutomationDeployment
+        {
+            TaskId = RemoteAutomationOfficialScripts.TaskId(entry), CatalogPath = catalogPath,
+            Source = new() { SourceId = entry.Id, Revision = entry.Revision, Sha256 = entry.ArchiveSha256,
+                SharedRevision = entry.SharedRevision, SharedSha256 = entry.SharedArchiveSha256 }
+        };
+        var previous = AutomationRuntime.ScriptSource;
+        AutomationRuntime.ScriptSource = new DeploymentOnlySource();
+        try
+        {
+            await using var host = new AutomationHost(new AutomationStore(scope.State), scope.Output,
+                true, null, null, null, schedulingEnabled: false);
+            var worker = new RemoteAutomationOfficialScripts(host, RemoteAutomationEnvironment.Current);
+            await worker.PrepareDeploymentAsync(request, publisher.Address, CancellationToken.None);
+            File.Exists(entry.Path).Should().BeTrue();
+            AutomationRemoteSource.DefaultUrl.Should().Be(publisher.Address + "different/");
         }
         finally { AutomationRuntime.ScriptSource = previous; }
     }

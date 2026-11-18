@@ -16,13 +16,15 @@ internal sealed class RemoteAutomationOfficialScripts(AutomationHost automation,
     private const string Prefix = "official.";
     private readonly object _gate = new();
     private AutomationOfficialScript[] _entries = [];
+    private AutomationOfficialScript[] _deployedEntries = [];
     private Task _refresh = Task.CompletedTask;
     private DateTimeOffset _nextRefresh;
     private readonly Dictionary<string, Task<Draft>> _preparations = [];
 
     internal sealed record Draft(AutomationTask Task, IAutomationTemplate Template, string Revision);
 
-    public IReadOnlyList<AutomationOfficialScript> Entries => Volatile.Read(ref _entries);
+    public IReadOnlyList<AutomationOfficialScript> Entries => Volatile.Read(ref _deployedEntries)
+        .Concat(Volatile.Read(ref _entries)).DistinctBy(TaskId).ToArray();
     public static bool IsOfficial(string taskId) => taskId.StartsWith(Prefix, StringComparison.Ordinal);
     public bool IsPublished(string taskId) => IsOfficial(taskId) || Entries.Any(entry => TaskId(entry) == taskId);
     public static string TaskId(AutomationOfficialScript entry) => entry.TaskId ?? TaskId(entry.Id);
@@ -114,28 +116,28 @@ internal sealed class RemoteAutomationOfficialScripts(AutomationHost automation,
         }
     }
 
-    public async Task<Draft> PrepareDeploymentAsync(RemoteAutomationDeployment request, CancellationToken token)
+    public async Task<Draft> PrepareDeploymentAsync(RemoteAutomationDeployment request, string server, CancellationToken token)
     {
-        lock (_gate) _nextRefresh = DateTimeOffset.MinValue;
-        RefreshIfDue(token);
-        Task refresh;
-        lock (_gate) refresh = _refresh;
-        await refresh.WaitAsync(token);
-        var entry = Entries.FirstOrDefault(item => TaskId(item) == request.TaskId)
-            ?? await PublishedEntryAsync(request.TaskId, token)
-            ?? throw new InvalidOperationException("此流程已不在允许分发的官方目录中。");
         var source = request.Source;
+        using var scope = request.CatalogPath is { Length: > 0 } pathValue
+            ? AutomationRemoteSource.EnterDeploymentSource(server, pathValue) : null;
+        var entries = await new AutomationOfficialScripts().ListAsync(token, source.SourceId);
+        var entry = entries.FirstOrDefault(item => TaskId(item) == request.TaskId && item.Id == source.SourceId)
+            ?? throw new InvalidOperationException("此流程已不在允许分发的官方目录中。");
         if (entry.Id != source.SourceId || entry.Revision != source.Revision || entry.SharedRevision != source.SharedRevision
             || !entry.ArchiveSha256.Equals(source.Sha256, StringComparison.OrdinalIgnoreCase)
             || !entry.SharedArchiveSha256.Equals(source.SharedSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("发布版本已变化；本次部署保留原版本指纹，请重新下发部署。");
         var saved = automation.Tasks.FirstOrDefault(view => view.Task.Id == request.TaskId);
-        if (saved != null && Conflict(saved.Task) is { } conflict)
-            throw new InvalidOperationException(conflict);
+        if (saved != null && (automation.Scripts.SavedScriptPath(saved.Task.TemplateId) is not { } savedPath
+            || !SameEntry(savedPath, entry.Path)))
+            throw new InvalidOperationException("官方流程标识与本机任务脚本冲突，未修改原任务。");
         var prepared = await PrepareEntryAsync(request.TaskId, entry, deployment: true, token);
         var path = automation.Scripts.SavedScriptPath(prepared.Task.TemplateId)
             ?? throw new InvalidOperationException("部署后未找到可加载的流程入口。");
         VerifyDeploymentVersion(path, source);
+        lock (_gate)
+            Volatile.Write(ref _deployedEntries, _deployedEntries.Where(item => TaskId(item) != request.TaskId).Append(entry).ToArray());
         return prepared;
     }
 

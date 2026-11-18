@@ -53,6 +53,38 @@ func mockProtocol() protocolConfig {
 		ActorHeader: "X-Orchard-Actor", AccessHeader: "X-Orchard-Access", MCPServerName: "Orchard Automation"}
 }
 
+// Anchor: Docs/automation-tenants-server.md#tenant-boundary
+func TestDefaultTenantFallbackKeepsExplicitMachineAssignment(t *testing.T) {
+	c := mockService(t).config
+	filename := filepath.Join(t.TempDir(), "config.json")
+	for _, enabled := range []bool{false, true} {
+		c.AllowDefaultTenantFallback = enabled
+		data, err := json.Marshal(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filename, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := loadConfig(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		explicit, err := loaded.assign("meadow-box")
+		if err != nil || explicit != (assignment{TenantID: "meadow", PoolID: "pool"}) {
+			t.Fatalf("explicit assignment with fallback %t = %+v, %v", enabled, explicit, err)
+		}
+		fallback, err := loaded.assign("unlisted-box")
+		if enabled {
+			if err != nil || fallback != (assignment{TenantID: "orchard", PoolID: "pool"}) {
+				t.Fatalf("default assignment = %+v, %v", fallback, err)
+			}
+		} else if err == nil {
+			t.Fatalf("unlisted machine was assigned without opt-in: %+v", fallback)
+		}
+	}
+}
+
 func seedRun(t *testing.T, s *service, tenant string) string {
 	t.Helper()
 	id := strings.Repeat("a", 32)
@@ -64,6 +96,50 @@ func seedRun(t *testing.T, s *service, tenant string) string {
 		t.Fatal(err)
 	}
 	return id
+}
+
+// Anchor: Docs/automation-tenants-server.md#tenant-boundary
+func TestMachineReceivesAndReportsRunsForEachSavedMembership(t *testing.T) {
+	s := mockService(t)
+	reply := httptest.NewRecorder()
+	s.serve(reply, httptest.NewRequest("POST", "/internal/machine-memberships",
+		strings.NewReader(`{"machine_name":"Orchard-Box","tenant_ids":["meadow","orchard"]}`)))
+	if reply.Code != 200 {
+		t.Fatalf("save memberships: %d %s", reply.Code, reply.Body)
+	}
+	if err := s.store.lock.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := openStore(s.config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.store = reopened
+	poll := PollRequest{MachineName: "orchard-box", Tasks: []Task{{ID: "job", Name: "Mock job", CanRun: true}}}
+	if _, err := s.poll(poll); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{}
+	for _, tenant := range s.config.Tenants {
+		run, err := s.createRun(tenant, "operator", CreateRequest{MachineName: poll.MachineName, TaskID: "job"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want[run.ID] = tenant.ID
+	}
+	mailbox, err := s.poll(poll)
+	if err != nil || len(mailbox.Requests) != len(want) {
+		t.Fatalf("multitenant mailbox: %+v, %v", mailbox.Requests, err)
+	}
+	for _, request := range mailbox.Requests {
+		if want[request.ID] != request.TenantID {
+			t.Fatalf("run delivered under wrong tenant: %+v", request)
+		}
+		run, err := s.report(request.ID, ReportRequest{MachineName: poll.MachineName, State: "succeeded", LogsComplete: true})
+		if err != nil || run.State != "succeeded" || run.TenantID != request.TenantID {
+			t.Fatalf("run reported to wrong tenant: %+v, %v", run, err)
+		}
+	}
 }
 
 // Anchor: Docs/automation-tenants-server.md#tenant-boundary

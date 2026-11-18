@@ -111,12 +111,13 @@ func (s *service) observeParent(name, localID string, raw json.RawMessage) error
 		}
 		return fault(400, "parent_snapshot 必须与 parent_local_run_id 对应。")
 	}
-	assigned, err := s.config.assign(name)
-	if err != nil {
-		return err
-	}
 	title, revision := header.TaskID, ""
 	s.store.mu.Lock()
+	assigned, err := s.assignLocalRun(name, header.RemoteRequestID, localID, header.TaskID)
+	if err != nil {
+		s.store.mu.Unlock()
+		return err
+	}
 	machine, exists := s.store.states[assigned.TenantID].Machines[strings.ToLower(name)]
 	if !exists {
 		s.store.mu.Unlock()
@@ -142,10 +143,6 @@ func (s *service) createChild(request ChildRequest) (RemoteRun, error) {
 		return RemoteRun{}, fault(400, "failure 只能随 cancel_requested 提交。")
 	}
 	name, err := machineName(request.MachineName)
-	if err != nil {
-		return RemoteRun{}, err
-	}
-	assigned, err := s.config.assign(name)
 	if err != nil {
 		return RemoteRun{}, err
 	}
@@ -184,6 +181,10 @@ func (s *service) createChild(request ChildRequest) (RemoteRun, error) {
 	}
 	s.store.mu.Lock()
 	defer s.store.mu.Unlock()
+	assigned, err := s.assignLocalRun(name, "", request.ParentLocalRunID, "")
+	if err != nil {
+		return RemoteRun{}, err
+	}
 	var result RemoteRun
 	err = s.store.change(assigned.TenantID, func(state *tenantState) error {
 		parent, err := findParent(state, assigned, name, request.ParentLocalRunID)
@@ -225,8 +226,8 @@ func (s *service) createChild(request ChildRequest) (RemoteRun, error) {
 				return err
 			}
 		}
-		targetAssignment, err := s.config.assign(target)
-		if err != nil || targetAssignment.TenantID != assigned.TenantID {
+		targetAssignment, err := s.assignMachine(target, assigned.TenantID)
+		if err != nil {
 			return fault(403, "子图目标机器必须属于父运行所在租户。")
 		}
 		targetName := target
@@ -310,7 +311,7 @@ func (s *service) childForParent(id string, request ChildAccessRequest) (assignm
 	if err != nil {
 		return assignment{}, RemoteRun{}, err
 	}
-	assigned, err := s.config.assign(name)
+	assigned, err := s.assignLocalRun(name, "", request.ParentLocalRunID, "")
 	if err != nil {
 		return assigned, RemoteRun{}, err
 	}

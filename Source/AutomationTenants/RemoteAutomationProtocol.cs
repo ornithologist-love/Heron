@@ -16,6 +16,7 @@ public static class RemoteAutomationProtocol
     public const string TriggerCapability = "pregel.triggers.v1";
     public const string DiscardCapability = "pregel.discard.v1";
     public const string DeploymentCapability = "pregel.deploy.v1";
+    public const string TenantSourceCapability = "pregel.tenant-source.v1";
 }
 
 public sealed record RemoteAutomationTask
@@ -91,6 +92,7 @@ public sealed record RemoteAutomationDeployment
 {
     public string Id { get; init; } = "";
     public string TaskId { get; init; } = "";
+    public string? CatalogPath { get; init; }
     public RemoteAutomationDeploymentSource Source { get; init; } = new();
 }
 
@@ -147,6 +149,9 @@ public sealed record RemoteAutomationObservationReceipt(string Id);
 
 public sealed record RemoteAutomationRequest
 {
+    public string? TenantId { get; init; }
+    public bool ResourceCoordinationEnabled { get; init; }
+    public string? DeploymentCatalogPath { get; init; }
     public RemoteAutomationDeploymentSource? DeploymentSource { get; init; }
     public string Id { get; init; } = "";
     public string TaskId { get; init; } = "";

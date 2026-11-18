@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -15,6 +16,7 @@ import (
 )
 
 const deploymentCapability = "pregel.deploy.v1"
+const tenantSourceCapability = "pregel.tenant-source.v1"
 
 // Deployment describes source preparation, never a second graph execution state machine.
 type DeploymentSource struct {
@@ -26,9 +28,10 @@ type DeploymentSource struct {
 }
 
 type DeploymentRequest struct {
-	ID     string           `json:"id"`
-	TaskID string           `json:"task_id"`
-	Source DeploymentSource `json:"source"`
+	ID          string           `json:"id"`
+	TaskID      string           `json:"task_id"`
+	Source      DeploymentSource `json:"source"`
+	CatalogPath string           `json:"catalog_path,omitempty"`
 }
 
 type Deployment struct {
@@ -136,8 +139,8 @@ func (s *service) putDeployment(state *tenantState, tenant tenantConfig, actor s
 	if !ok {
 		return Deployment{}, fault(404, "目标机器尚未接入自动化 Agent。")
 	}
-	assigned, err := s.config.assign(machine.MachineName)
-	if err != nil || assigned.TenantID != tenant.ID || assigned.PoolID != machine.PoolID {
+	assigned, err := s.assignMachine(machine.MachineName, tenant.ID)
+	if err != nil || assigned.PoolID != machine.PoolID {
 		return Deployment{}, fault(409, "目标机器归属已变化，请刷新目录。")
 	}
 	if !slices.Contains(machine.Capabilities, deploymentCapability) {
@@ -153,7 +156,7 @@ func (s *service) putDeployment(state *tenantState, tenant tenantConfig, actor s
 		return Deployment{}, err
 	}
 	now := time.Now().UTC()
-	job := Deployment{DeploymentRequest: DeploymentRequest{hex.EncodeToString(id), request.TaskID, source},
+	job := Deployment{DeploymentRequest: DeploymentRequest{ID: hex.EncodeToString(id), TaskID: request.TaskID, Source: source},
 		TenantID: tenant.ID, PoolID: machine.PoolID, MachineName: machine.MachineName, RequestID: request.RequestID,
 		CreatedBy: actor, State: "queued", Detail: "等待目标 Agent 拉取并准备流程", CreatedAt: now, UpdatedAt: now}
 	if state.Deployments == nil {
@@ -208,15 +211,21 @@ func (s *service) reportDeployment(id string, report DeploymentReport) (Deployme
 	if err != nil {
 		return Deployment{}, err
 	}
-	assigned, err := s.config.assign(name)
-	if err != nil {
-		return Deployment{}, err
-	}
 	if !slices.Contains([]string{"preparing", "ready", "failed"}, report.State) || !clean(report.Detail, 4000) {
 		return Deployment{}, fault(400, "部署回执格式无效。")
 	}
 	s.store.mu.Lock()
 	defer s.store.mu.Unlock()
+	var assigned assignment
+	for _, candidate := range s.machineAssignments(name) {
+		if _, ok := s.store.states[candidate.TenantID].Deployments[id]; ok {
+			assigned = candidate
+			break
+		}
+	}
+	if assigned.TenantID == "" {
+		return Deployment{}, fault(403, "部署回执与目标机器或发布版本不符。")
+	}
 	var result Deployment
 	err = s.store.change(assigned.TenantID, func(state *tenantState) error {
 		job, ok := state.Deployments[id]
@@ -252,14 +261,27 @@ func (s *service) reportDeployment(id string, report DeploymentReport) (Deployme
 	return result, err
 }
 
-func deploymentMailbox(state *tenantState, machine Machine) []DeploymentRequest {
+func agentCatalogPath(tenant tenantConfig, capabilities []string) string {
+	if !slices.Contains(capabilities, tenantSourceCapability) {
+		return ""
+	}
+	catalog, err := url.Parse(tenant.ScriptSourceURL)
+	if err != nil || !strings.HasSuffix(catalog.Path, "/catalog.json") {
+		return ""
+	}
+	return catalog.EscapedPath()
+}
+
+func deploymentMailbox(state *tenantState, tenant tenantConfig, machine Machine) []DeploymentRequest {
 	result := []DeploymentRequest{}
 	if !slices.Contains(machine.Capabilities, deploymentCapability) {
 		return result
 	}
 	for _, job := range state.Deployments {
 		if job.PoolID == machine.PoolID && strings.EqualFold(job.MachineName, machine.MachineName) && job.State != "ready" && job.State != "failed" {
-			result = append(result, job.DeploymentRequest)
+			request := job.DeploymentRequest
+			request.CatalogPath = agentCatalogPath(tenant, machine.Capabilities)
+			result = append(result, request)
 		}
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })

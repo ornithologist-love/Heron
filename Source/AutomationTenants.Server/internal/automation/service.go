@@ -95,6 +95,9 @@ func (s *service) inventory(actor, selected string, team bool) (Inventory, error
 			result.Schedules[tenant.ID] = scheduleViews(s.store.states[tenant.ID], time.Now())
 		}
 		for _, machine := range s.store.states[tenant.ID].Machines {
+			if assigned, err := s.assignMachine(machine.MachineName, tenant.ID); err != nil || assigned.PoolID != machine.PoolID {
+				continue
+			}
 			if team && !tenant.TeamExecution.allowsMachine(machine.MachineName) {
 				continue
 			}
@@ -240,8 +243,8 @@ func (s *service) createRunAdmitted(tenant tenantConfig, actor string, request C
 		if tenant.ResourceServerURL != "" && !slices.Contains(machine.Capabilities, mutexCapability) {
 			return fault(409, "当前租户使用统一 Pregel 资源协调；目标机器尚不支持，请先升级 Agent。")
 		}
-		assignment, err := s.config.assign(machine.MachineName)
-		if err != nil || assignment.TenantID != tenant.ID {
+		assignment, err := s.assignMachine(machine.MachineName, tenant.ID)
+		if err != nil || assignment.PoolID != machine.PoolID {
 			return fault(409, "机器的租户归属已变更，请刷新目录。")
 		}
 		task := executionTask(machine, request.TaskID, false)
@@ -404,13 +407,38 @@ func (s *service) poll(request PollRequest) (PollReply, error) {
 	if err != nil {
 		return PollReply{}, err
 	}
-	assignment, err := s.config.assign(name)
-	if err != nil {
-		return PollReply{}, err
-	}
 	if err := validatePoll(&request); err != nil {
 		return PollReply{}, err
 	}
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
+	assignments := s.machineAssignments(name)
+	if len(assignments) == 0 {
+		return PollReply{}, fault(403, "机器未配置租户归属。")
+	}
+	var merged PollReply
+	for index, assigned := range assignments {
+		reply, err := s.pollAssigned(name, assigned, request)
+		if err != nil {
+			return PollReply{}, err
+		}
+		if index == 0 {
+			merged = reply
+			continue
+		}
+		merged.TaskCatalog = append(merged.TaskCatalog, reply.TaskCatalog...)
+		merged.Requests = append(merged.Requests, reply.Requests...)
+		merged.Controls = append(merged.Controls, reply.Controls...)
+		merged.Inspections = append(merged.Inspections, reply.Inspections...)
+		merged.ServerSchedules = append(merged.ServerSchedules, reply.ServerSchedules...)
+		merged.Deployments = append(merged.Deployments, reply.Deployments...)
+		merged.ResourceCoordinationEnabled = merged.ResourceCoordinationEnabled || reply.ResourceCoordinationEnabled
+	}
+	return merged, nil
+}
+
+// The caller holds store.mu. Each tenant only sees its own registered tasks and runs.
+func (s *service) pollAssigned(name string, assignment assignment, request PollRequest) (PollReply, error) {
 	tenant := s.config.tenantByID[assignment.TenantID]
 	if strings.EqualFold(name, tenant.ServerMachine) && !slices.Contains(request.Capabilities, serverCapability) {
 		return PollReply{}, fault(409, "配置的服务器必须以 Pregel 父图宿主模式接入。")
@@ -421,8 +449,6 @@ func (s *service) poll(request PollRequest) (PollReply, error) {
 			pool = candidate.Pool
 		}
 	}
-	s.store.mu.Lock()
-	defer s.store.mu.Unlock()
 	reply := PollReply{TenantID: assignment.TenantID, PoolID: assignment.PoolID,
 		TaskCatalog:                 tenant.registeredTasks(),
 		ResourceCoordinationEnabled: tenant.ResourceServerURL != "", Requests: []RunRequest{}, Inspections: []InspectionRequest{}, Controls: []ControlRequest{}, ServerSchedules: []ServerSchedule{}}
@@ -461,10 +487,10 @@ func (s *service) poll(request PollRequest) (PollReply, error) {
 				if tenant.ResourceServerURL != "" && !slices.Contains(request.Capabilities, mutexCapability) {
 					continue
 				}
-				canRun := false
+				canRun := run.DeploymentID != "" && agentCatalogPath(tenant, request.Capabilities) != ""
 				for _, task := range request.Tasks {
 					if task.ID == run.TaskID && taskConfiguration(task) == runConfiguration(run) {
-						canRun = task.CanRun
+						canRun = canRun || task.CanRun
 						break
 					}
 				}
@@ -485,11 +511,14 @@ func (s *service) poll(request PollRequest) (PollReply, error) {
 			}
 			if run.AcceptedAt != nil && (!terminal(run.State) || !run.LogsComplete) {
 				var source *DeploymentSource
+				var catalogPath string
 				if job, exists := state.Deployments[run.DeploymentID]; exists {
 					pinned := job.Source
 					source = &pinned
+					catalogPath = agentCatalogPath(tenant, request.Capabilities)
 				}
 				reply.Requests = append(reply.Requests, RunRequest{ID: run.ID, TaskID: runConfiguration(run), Parameters: run.Parameters,
+					TenantID: tenant.ID, DeploymentCatalogPath: catalogPath, ResourceCoordinationEnabled: tenant.ResourceServerURL != "",
 					DeploymentSource: source, CancelRequested: run.CancelRequested, State: run.State, Subgraph: run.Subgraph, CancellationFailure: run.CancellationFailure, ScheduledFor: run.ScheduledFor})
 			}
 		}
@@ -498,6 +527,7 @@ func (s *service) poll(request PollRequest) (PollReply, error) {
 	// Most polls only prove the machine is still there. Those update memory alone: rewriting the
 	// whole tenant state for every machine every two seconds is what saturates the server.
 	seen := tenant.ID + "/" + strings.ToLower(name)
+	var err error
 	if heartbeatOnly(s.store.states[tenant.ID], machine) && now.Sub(s.store.seenOnDisk[seen]) <= heartbeatPersist {
 		err = apply(s.store.states[tenant.ID])
 	} else if err = s.store.change(tenant.ID, apply); err == nil {
@@ -512,7 +542,7 @@ func (s *service) poll(request PollRequest) (PollReply, error) {
 		sort.Slice(reply.Inspections, func(i, j int) bool { return reply.Inspections[i].ID < reply.Inspections[j].ID })
 	}
 	if err == nil {
-		reply.Deployments = deploymentMailbox(s.store.states[tenant.ID], machine)
+		reply.Deployments = deploymentMailbox(s.store.states[tenant.ID], tenant, machine)
 	}
 	return reply, err
 }
@@ -587,18 +617,22 @@ func (s *service) agentRun(name, id string) (assignment, error) {
 	if err != nil {
 		return assignment{}, err
 	}
-	assigned, err := s.config.assign(name)
-	if err != nil {
-		return assigned, err
+	if !runID.MatchString(id) {
+		return assignment{}, fault(400, "运行 ID 无效。")
 	}
-	run, err := requireRun(s.store.states[assigned.TenantID], id)
-	if err != nil {
-		return assigned, err
+	assignments := s.machineAssignments(name)
+	if len(assignments) == 0 {
+		return assignment{}, fault(403, "机器未配置租户归属。")
 	}
-	if !strings.EqualFold(run.MachineName, name) || run.PoolID != assigned.PoolID {
-		return assigned, fault(403, "运行不属于这台机器的租户与机器池。")
+	for _, assigned := range assignments {
+		if run, ok := s.store.states[assigned.TenantID].Runs[id]; ok {
+			if !strings.EqualFold(run.MachineName, name) || run.PoolID != assigned.PoolID {
+				return assignment{}, fault(403, "运行不属于这台机器的租户与机器池。")
+			}
+			return assigned, nil
+		}
 	}
-	return assigned, nil
+	return assignment{}, fault(404, "找不到运行。")
 }
 
 func (s *service) report(id string, request ReportRequest) (RemoteRun, error) {

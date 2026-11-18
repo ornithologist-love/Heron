@@ -12,6 +12,7 @@ namespace Heron.AutomationTenants;
 /// <summary>Transport for the same Pregel resource contract used by local execution.</summary>
 public sealed class RemotePregelResourceCoordinator(string serverUrl) : IPregelResourceCoordinator
 {
+    internal const string TenantVariable = "HERON_AUTOMATION_TENANT_ID";
     internal static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -124,6 +125,8 @@ public sealed class RemotePregelResourceCoordinator(string serverUrl) : IPregelR
 
     internal async Task<PregelResourceReply> SendAsync(string action, PregelResourceMessage message, CancellationToken token)
     {
+        if (message.TenantId.Length == 0 && Environment.GetEnvironmentVariable(TenantVariable) is { Length: > 0 } tenant)
+            message = message with { TenantId = tenant };
         using var response = await Http.PostAsJsonAsync(_server.TrimEnd('/') + "/api/agent/automation/resources/" + action,
             message, Json, token).ConfigureAwait(false);
         var body = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
@@ -158,7 +161,8 @@ public sealed class RemotePregelResourceCoordinator(string serverUrl) : IPregelR
         var message = new PregelResourceMessage
         {
             MachineName = Environment.MachineName, RequestId = requestId,
-            Context = context, ParentContext = parentContext
+            Context = context, ParentContext = parentContext,
+            TenantId = Environment.GetEnvironmentVariable(TenantVariable) ?? ""
         };
         var path = ReleasePath(_server, requestId);
         WriteJson(path, message);

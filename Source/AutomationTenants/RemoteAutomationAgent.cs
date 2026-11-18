@@ -190,12 +190,13 @@ public sealed partial class RemoteAutomationAgent(AutomationHost automation, Rem
                 RemoteAutomationProtocol.InspectCapability, RemoteAutomationProtocol.SubgraphCapability,
                 RemoteAutomationProtocol.ResourceCapability, RemoteAutomationProtocol.ControlCapability,
                 RemoteAutomationProtocol.TriggerCapability, RemoteAutomationProtocol.DiscardCapability,
-                RemoteAutomationProtocol.DeploymentCapability }.Concat(settings.IsServerHost
+                RemoteAutomationProtocol.DeploymentCapability, RemoteAutomationProtocol.TenantSourceCapability }.Concat(settings.IsServerHost
                     ? [RemoteAutomationProtocol.ServerCapability] : Array.Empty<string>()).ToArray(), tasks = Catalog(tasks)
         }, token);
         _taskCatalog = mailbox.TaskCatalog;
         if (_taskCatalog != null) automation.UpdateCloudTaskCatalog(_server, _taskCatalog);
-        if ((_deployment == null || _deployment.IsCompleted) && mailbox.Deployments.FirstOrDefault() is { } deployment)
+        if (_startupLeases.Count == 0 && (_deployment == null || _deployment.IsCompleted)
+            && mailbox.Deployments.FirstOrDefault() is { } deployment)
         {
             // A lost completion receipt replays preparation, never graph execution.
             if (_deployment?.Exception is { } failure)
@@ -288,15 +289,30 @@ public sealed partial class RemoteAutomationAgent(AutomationHost automation, Rem
             try
             {
                 var saved = automation.Tasks.FirstOrDefault(view => view.Task.Id == request.TaskId);
-                if (saved != null && _officialScripts.Conflict(saved.Task) is { } conflict)
+                if (request.DeploymentCatalogPath is { Length: > 0 } && request.DeploymentSource is { } source)
+                {
+                    // Let the in-flight installation finish before admitting another pinned publication.
+                    if (_startupLeases.Count != 0 || _deployment is { IsCompleted: false }) continue;
+                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    timeout.CancelAfter(TimeSpan.FromMinutes(3));
+                    officialDraft = await _officialScripts.PrepareDeploymentAsync(new()
+                    {
+                        TaskId = request.TaskId, Source = source, CatalogPath = request.DeploymentCatalogPath
+                    }, _server, timeout.Token);
+                }
+                else if (saved != null && _officialScripts.Conflict(saved.Task) is { } conflict)
                     throw new InvalidOperationException(conflict);
-                if (NeedsOfficialPreparation(request.TaskId, saved))
+                if (officialDraft == null && NeedsOfficialPreparation(request.TaskId, saved))
                 {
                     var preparation = _officialScripts.Prepare(request.TaskId, token, reload: saved != null);
                     if (!preparation.IsCompleted)
                         preparingOfficial = true;
                     else officialDraft = await preparation;
                 }
+            }
+            catch (Exception error) when (error is AutomationScriptInUseException or AutomationSourceBusyException)
+            {
+                continue;
             }
             catch (Exception error) when (!token.IsCancellationRequested)
             {
@@ -637,6 +653,10 @@ public sealed partial class RemoteAutomationAgent(AutomationHost automation, Rem
         {
             UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = directory
         };
+        if (request.DeploymentCatalogPath is { Length: > 0 } catalog)
+            start.Environment[AutomationRemoteSource.DeploymentCatalogVariable] = catalog;
+        if (request.ResourceCoordinationEnabled && request.TenantId is { Length: > 0 } tenant)
+            start.Environment[RemotePregelResourceCoordinator.TenantVariable] = tenant;
         foreach (var argument in settings.CliArguments) start.ArgumentList.Add(argument);
         foreach (var argument in new[] { "graph", "run", "--task", request.TaskId,
                      "--remote-request", request.Id, "--remote-parameters-file", parameters,

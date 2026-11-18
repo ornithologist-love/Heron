@@ -20,7 +20,7 @@ public sealed partial class RemoteAutomationAgent
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromMinutes(3));
-            var draft = await _officialScripts.PrepareDeploymentAsync(request, timeout.Token);
+            var draft = await _officialScripts.PrepareDeploymentAsync(request, server, timeout.Token);
             var savedView = automation.Tasks.FirstOrDefault(view => view.Task.Id == request.TaskId);
             var saved = savedView?.Task ?? draft.Task;
             var reason = !File.Exists(settings.CliExecutablePath) ? "当前安装缺少 CLI，请更新构建机包。"
@@ -36,6 +36,7 @@ public sealed partial class RemoteAutomationAgent
                 CanRun = reason.Length == 0, UnavailableReason = reason
             };
         }
+        catch (Exception error) when (error is AutomationScriptInUseException or AutomationSourceBusyException) { return; }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
         catch (Exception error)
         {

@@ -50,12 +50,12 @@ func (s *service) proxyResources(w http.ResponseWriter, r *http.Request, action 
 	if err != nil {
 		return resourceResponse{}, err
 	}
-	assigned, err := s.config.assign(name)
-	if err != nil {
-		return resourceResponse{}, err
+	var tenant string
+	if raw, ok := payload["tenant_id"]; ok && json.Unmarshal(raw, &tenant) != nil {
+		return resourceResponse{}, fault(400, "资源协议 tenant_id 无效。")
 	}
+	owner := ""
 	if rawOwner, exists := payload["owner_machine_name"]; exists {
-		var owner string
 		if !bytes.Equal(bytes.TrimSpace(rawOwner), []byte("null")) && json.Unmarshal(rawOwner, &owner) != nil {
 			return resourceResponse{}, fault(400, "owner_machine_name 格式无效。")
 		}
@@ -67,12 +67,29 @@ func (s *service) proxyResources(w http.ResponseWriter, r *http.Request, action 
 			if err != nil {
 				return resourceResponse{}, err
 			}
-			ownerAssignment, err := s.config.assign(owner)
-			if err != nil || ownerAssignment.TenantID != assigned.TenantID {
-				return resourceResponse{}, fault(403, "资源请求的执行机器必须与调用方属于同一租户。")
-			}
 			payload["owner_machine_name"], _ = json.Marshal(owner)
 		}
+	}
+	s.store.mu.Lock()
+	if tenant == "" {
+		for _, candidate := range s.machineAssignments(name) {
+			if s.config.tenantByID[candidate.TenantID].ResourceServerURL != "" {
+				tenant = candidate.TenantID
+				break
+			}
+		}
+	}
+	assigned, err := s.assignMachine(name, tenant)
+	var ownerErr error
+	if err == nil && owner != "" {
+		_, ownerErr = s.assignMachine(owner, assigned.TenantID)
+	}
+	s.store.mu.Unlock()
+	if err != nil {
+		return resourceResponse{}, err
+	}
+	if ownerErr != nil {
+		return resourceResponse{}, fault(403, "资源请求的执行机器必须与调用方属于同一租户。")
 	}
 	server := s.config.tenantByID[assigned.TenantID].ResourceServerURL
 	if server == "" {

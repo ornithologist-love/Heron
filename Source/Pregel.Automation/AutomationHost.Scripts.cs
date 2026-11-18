@@ -2,7 +2,7 @@ using System.Reflection;
 
 namespace Heron.Pregel.Automation;
 
-internal sealed class AutomationScriptInUseException() : InvalidOperationException(
+public sealed class AutomationScriptInUseException() : InvalidOperationException(
     "此脚本有正在运行或等待审核的任务，请完成或停止后再重新加载/移除");
 
 public sealed partial class AutomationHost

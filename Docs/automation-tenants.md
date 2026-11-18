@@ -27,6 +27,8 @@ Storage stays bounded. A run start records use of its snapshot. Retention keeps 
 
 ## Delivery and logs
 
+An Agent can receive work from more than one tenant in the same poll. The server keeps each cloud invocation in its issuing tenant, and the Worker prepares deployments against that invocation's catalog on the dispatch server's authority. This keeps the host's default catalog for normal discovery while letting one machine receive publications from separate tenant libraries.
+
 Delivery identities are persisted before subsequent polls can replay them. Reconnection queries and reports the existing local run, retaining the child invocation and target. A worker or network restart does not cancel the detached execution process. A duplicate child invocation returns the original execution.
 
 An embedding host can attach an environment fingerprint at run admission. It is part of the persisted run record and travels in the existing run snapshot, so a retried report uses the original values. Fingerprints contain version or revision identifiers suitable for reporting.

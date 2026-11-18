@@ -117,6 +117,14 @@ func (s *service) route(w http.ResponseWriter, r *http.Request) (any, error) {
 	team := r.Header.Get(s.config.Protocol.AccessHeader) == "team"
 	tenant := r.URL.Query().Get("tenant_id")
 	switch {
+	case path == "/internal/machine-memberships" && r.Method == http.MethodGet:
+		return s.membershipView(), nil
+	case path == "/internal/machine-memberships" && r.Method == http.MethodPost:
+		var change membershipChange
+		if err := readJSON(w, r, &change); err != nil {
+			return nil, err
+		}
+		return s.saveMemberships(change)
 	case path == "/internal/workflow-source-identity" && r.Method == http.MethodPost:
 		var request workflowIdentityRequest
 		if err := readJSON(w, r, &request); err != nil {
