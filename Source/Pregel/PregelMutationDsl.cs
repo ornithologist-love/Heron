@@ -39,7 +39,8 @@ public sealed partial class PregelResultGraphDsl<TInput, TOutput>
         CompiledPregelGraph template, PregelVariable<TItem> input, Func<PregelRunResult, TResult> readResult,
         Func<TOutput, PregelNodeContext, CancellationToken, IReadOnlyList<PregelMutationItem<TItem>>> select,
         PregelMutationMode mode, Func<TResult, string?>? skipReason, out NodeRef<PregelUnit> entry,
-        string? subgraphTitle = null, PregelVariable<IReadOnlyList<TResult>>? into = null)
+        string? subgraphTitle = null, PregelVariable<IReadOnlyList<TResult>>? into = null,
+        Func<TItem, string?>? itemSkipReason = null)
     {
         _ = PregelId.Validate(id, nameof(id));
         ArgumentNullException.ThrowIfNull(template);
@@ -51,8 +52,9 @@ public sealed partial class PregelResultGraphDsl<TInput, TOutput>
         var output = into ?? _builder.Output<IReadOnlyList<TResult>>("mutation:" + id + ":result", Array.Empty<TResult>());
         var definition = new PregelMutationDefinition(id, entryId, joinId, mode,
             CheckpointCodecs.Default<TItem>().CodecId, CheckpointCodecs.Json<TResult>(allowNull: true).CodecId, template.Definition)
-            { HasResultSkipCondition = skipReason is not null, IsSingleSubgraph = subgraphTitle != null };
-        var runtime = new PregelMutationRuntime<TItem, TResult>(definition, template, input, readResult, output, skipReason);
+            { HasResultSkipCondition = skipReason is not null, IsSingleSubgraph = subgraphTitle != null,
+                HasItemSkipCondition = itemSkipReason is not null };
+        var runtime = new PregelMutationRuntime<TItem, TResult>(definition, template, input, readResult, output, skipReason, itemSkipReason);
         _builder.AddMutation(runtime);
         entry = _builder.Node(entryId.Value, (context, token) => {
             runtime.Plan(select(context.Read(_output), context, token), context); return ValueTask.CompletedTask;

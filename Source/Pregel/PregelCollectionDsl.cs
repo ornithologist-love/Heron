@@ -2,7 +2,10 @@ namespace Heron.Pregel;
 
 /// <summary>The compiled body of a collection branch: one child run per selected item.</summary>
 internal sealed record PregelBranchTemplate<TItem, TResult>(CompiledPregelGraph Graph, PregelVariable<TItem> Input,
-    Func<PregelRunResult, TResult> Read, Func<TResult, string?>? SkipReason);
+    Func<PregelRunResult, TResult> Read, Func<TResult, string?>? SkipReason)
+{
+    public Func<TItem, string?>? ItemSkipReason { get; init; }
+}
 
 /// <summary>The single Graph call a collection branch made from its root, with the nodes the call declared.</summary>
 internal sealed record PregelRootGraphCall(PregelMutationRuntime Runtime, IReadOnlySet<NodeId> Nodes);
@@ -32,8 +35,10 @@ internal static class PregelBranchTemplates
         ArgumentNullException.ThrowIfNull(branch);
         var (builder, root, input) = Start<TItem>(parent, id);
         branch(root);
-        root.CloseTemplate();
-        return Flatten<TItem, PregelUnit>(builder) ?? new(builder.Compile(), input, _ => PregelUnit.Value, null);
+        var itemSkipReason = root.CloseTemplate();
+        var template = Flatten<TItem, PregelUnit>(builder)
+            ?? new PregelBranchTemplate<TItem, PregelUnit>(builder.Compile(), input, _ => PregelUnit.Value, null);
+        return template with { ItemSkipReason = itemSkipReason };
     }
 
     public static PregelBranchTemplate<TItem, TResult> Build<TItem, TResult>(PregelGraphBuilder parent, string id,
@@ -44,11 +49,11 @@ internal static class PregelBranchTemplates
         var result = branch(root) ?? throw new ArgumentException("A branch must return its result chain.", nameof(branch));
         if (!result.IsTailOf(builder, builder.DefinedNodeIds.Last()))
             throw new ArgumentException("A branch must return the final result chain it declared.", nameof(branch));
-        root.CloseTemplate();
-        if (Flatten<TItem, TResult>(builder) is { } flat) return flat;
+        var itemSkipReason = root.CloseTemplate();
+        if (Flatten<TItem, TResult>(builder) is { } flat) return flat with { ItemSkipReason = itemSkipReason };
         var output = result.OutputVariable;
         var compiled = builder.Compile();
-        return new(compiled, input, run => compiled.Read(run, output), null);
+        return new(compiled, input, run => compiled.Read(run, output), null) { ItemSkipReason = itemSkipReason };
     }
 
     private static (PregelGraphBuilder, PregelLinearGraphDsl<TItem>, PregelVariable<TItem>) Start<TItem>(
@@ -131,10 +136,11 @@ public sealed partial class PregelLinearGraphDsl<TInput>
         NodeRef<PregelUnit> entry, PregelVariable<TInput> input) =>
         new PregelLinearGraphDsl<TInput>(builder, entry, input) { _templateRoot = true }.AsBranch("branch");
 
-    internal void CloseTemplate()
+    internal Func<TInput, string?>? CloseTemplate()
     {
         if (_first is null) throw new ArgumentException("A branch must contain a node.");
-        CloseBranch();
+        var conditions = _gate!.Conditions.ToArray();
+        return conditions.Length == 0 ? null : input => conditions.FirstOrDefault(x => !x.Predicate(input)).Reason;
     }
 
     /// <summary>Records the root Graph call of a collection branch so a branch made of only that call can be flattened.</summary>
@@ -160,6 +166,11 @@ public sealed partial class PregelLinearGraphDsl<TInput>
         if (_gate is not { } gate) return false;
         if (gate.Node is null ? _first is not null : !_tail.Id.Equals(gate.Node.Id)) return false;
         if (string.IsNullOrWhiteSpace(skipReason)) throw new ArgumentException("A skip reason is required.", nameof(skipReason));
+        if (_templateRoot)
+        {
+            gate.Conditions.Add((predicate, skipReason));
+            return true;
+        }
         if (gate.Node is null)
         {
             var conditions = gate.Conditions;
@@ -276,7 +287,8 @@ public sealed partial class PregelResultGraphDsl<TInput, TOutput>
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(key);
         return MutateCore(id, template.Graph, template.Input, template.Read,
-            (value, _, _) => Select(items(value), key, title, target), mode, template.SkipReason, out entry);
+            (value, _, _) => Select(items(value), key, title, target), mode, template.SkipReason, out entry,
+            itemSkipReason: template.ItemSkipReason);
     }
 
     private static IReadOnlyList<PregelMutationItem<TItem>> Select<TItem>(IEnumerable<TItem>? items,

@@ -571,6 +571,8 @@ public sealed partial class PregelGraphBuilder
                     mutation.Definition.InputCodecId, mutation.Definition.OutputCodecId);
                 if (mutation.Definition.HasResultSkipCondition)
                     fingerprint = PregelHash.Sha256(fingerprint, "mutation:result-skip:v1");
+                if (mutation.Definition.HasItemSkipCondition)
+                    fingerprint = PregelHash.Sha256(fingerprint, "mutation:item-skip:v1");
                 if (mutation.Definition.IsSingleSubgraph)
                     fingerprint = PregelHash.Sha256(fingerprint, "mutation:single-subgraph:v1");
             }
@@ -611,6 +613,7 @@ public sealed partial class PregelGraphBuilder
             pair => pair.Key,
             pair => (IReadOnlyList<EdgeRuntime>)pair.Value.OrderBy(edge => edge.Edge.To.Value, StringComparer.Ordinal).ToArray());
 
+        foreach (var mutation in _mutations.Values) mutation.Freeze();
         return new CompiledPregelGraph(
             definition,
             _nodes.ToFrozenDictionary(),

@@ -160,7 +160,8 @@ public sealed partial class PregelEngine
                 }
                 plans.Add(plan with { Instances = instances.ToArray() });
             }
-            if (request.NodePath.Count > 1 && !point.Mutations.SelectMany(x => x.Instances).Any(x => x.NodeId == target))
+            if (request.NodePath.Count > 1 && !point.Mutations.SelectMany(x => x.Instances)
+                    .Any(x => x.NodeId == target && x.SkipReason is null))
                 throw new PregelException("reexecution_subgraph_unsupported", "此子图不是内核管理的持久化实例，不能定位其内部检查点。");
             var index = history.ToList().FindIndex(x => x.CheckpointId == point.CheckpointId);
             var inherited = new List<PregelReusedNode>();

@@ -18,12 +18,16 @@ public sealed record PregelMutationDefinition(string Id, NodeId Entry, NodeId Jo
 {
     public bool HasResultSkipCondition { get; init; }
     public bool IsSingleSubgraph { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool HasItemSkipCondition { get; init; }
 }
 
 public sealed record PregelMutationInstance(string Key, string Title, NodeId NodeId,
     PregelRunId ChildRunId, PregelEncodedValue Input)
 {
     public string Target { get; init; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SkipReason { get; init; }
 }
 
 /// <summary>Durable expansion result. Restoring it never evaluates the upstream selector again.</summary>
@@ -81,6 +85,8 @@ public sealed record PregelMutationSnapshot(long Revision, PregelGraphDefinition
 internal abstract class PregelMutationRuntime(PregelMutationDefinition definition)
 {
     public PregelMutationDefinition Definition { get; protected set; } = definition;
+    protected bool IsFrozen { get; private set; }
+    public void Freeze() => IsFrozen = true;
     public abstract CompiledPregelGraph Template { get; }
     public abstract PregelVariables Bind(PregelEncodedValue input);
     public abstract PregelEncodedValue Result(PregelRunResult result);
@@ -89,7 +95,7 @@ internal abstract class PregelMutationRuntime(PregelMutationDefinition definitio
 
 internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefinition definition,
     CompiledPregelGraph template, PregelVariable<TItem> inputVariable, Func<PregelRunResult, TResult> readResult,
-    PregelVariable<IReadOnlyList<TResult>> output, Func<TResult, string?>? skipReason)
+    PregelVariable<IReadOnlyList<TResult>> output, Func<TResult, string?>? skipReason, Func<TItem, string?>? itemSkipReason)
     : PregelMutationRuntime(definition), IPregelResultSkip<TResult>
 {
     private readonly ICheckpointCodec<TItem> _input = CheckpointCodecs.Default<TItem>();
@@ -102,6 +108,7 @@ internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefini
 
     public void SkipIf(Func<TResult, string?> reason)
     {
+        if (IsFrozen) throw new InvalidOperationException("A result skip condition must be declared before compiling the graph.");
         if (_skipReason is not null) throw new InvalidOperationException("A result skip condition is already declared.");
         _skipReason = reason;
         Definition = Definition with { HasResultSkipCondition = true };
@@ -136,7 +143,7 @@ internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefini
             var identity = PregelHash.Sha256(id, item.Key);
             instances.Add(new(item.Key, item.Title ?? item.Key, new NodeId("mutation:" + identity),
                 new PregelRunId("mutation-" + identity), new(_input.CodecId, _input.Encode(item.Input)))
-                { Target = item.Target?.Trim() ?? "" });
+                { Target = item.Target?.Trim() ?? "", SkipReason = itemSkipReason?.Invoke(item.Input) });
         }
         context.Emit(new PregelCommand.Mutate(new(id, Definition.Id, Template.Definition.Fingerprint,
             Definition.Mode, context.Invocation.Path.ToArray(), instances.ToArray())));
@@ -146,18 +153,23 @@ internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefini
     {
         var plan = context.Checkpoint.Mutations.LastOrDefault(x => x.MutationId == Definition.Id && !x.Completed)
             ?? throw new PregelException("mutation_plan_missing", "No active expansion to join.");
-        var results = plan.Instances.Select(item => {
+        var results = new List<TResult>(plan.Results.Count);
+        var reasons = new List<string>();
+        foreach (var item in plan.Instances)
+        {
+            if (item.SkipReason is { } itemReason)
+            {
+                reasons.Add(itemReason);
+                continue;
+            }
             if (!plan.Results.TryGetValue(item.Key, out var value) || value.CodecId != _result.CodecId)
                 throw new PregelException("mutation_join_incomplete", $"Instance '{item.Key}' has not completed.");
-            return _result.Decode(value.Data);
-        }).ToArray();
-        context.Write(output, results);
-        if (results.Length > 0 && _skipReason is not null)
-        {
-            var reasons = plan.Instances.Select(item => SkipReason(plan.Results[item.Key])).ToArray();
-            if (reasons.All(reason => reason is not null))
-                context.MutationSkipReason = string.Join("\n", reasons.Distinct(StringComparer.Ordinal));
+            results.Add(_result.Decode(value.Data));
+            if (SkipReason(value) is { } resultReason) reasons.Add(resultReason);
         }
+        context.Write(output, results.ToArray());
+        if (reasons.Count > 0 && reasons.Count == plan.Instances.Count)
+            context.MutationSkipReason = string.Join("\n", reasons.Distinct(StringComparer.Ordinal));
         context.Emit(new PregelCommand.CompleteMutation(plan.Id));
     }
 }

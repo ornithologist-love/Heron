@@ -91,6 +91,42 @@ public sealed class CollectionBranchTests
     }
 
     [Fact]
+    public async Task CollectionBranch_WithAResult_CollectsOnlyExecutedItemsInOrder()
+    {
+        var store = new InMemoryPregelCheckpointStore();
+        var child = Pregel.Define<Unit>("report").Start(Report).Compile();
+        var graph = Pregel.Define<Run>("daily").Start(Plan)
+            .ForEach("reports", run => run.Units, unit => unit.Scene, unit => unit
+                .When(item => item.Tier == "epic", "low tier").Graph("report", child))
+            .Compile();
+
+        var input = new Run([new("city", "epic"), new("forest", "low"), new("river", "epic")]);
+        var result = await graph.Prepare(input, engine: new PregelEngine(store)).RunAsync();
+        var expansion = result.Checkpoint.Mutations.Should().ContainSingle().Which;
+        var skipped = expansion.Instances.Single(item => item.Key == "forest");
+        var outcomes = (await store.LoadHistoryAsync(result.RunId)).SelectMany(x => x.CommittedOutcomes);
+
+        result.Status.Should().Be(PregelRunStatus.Completed);
+        graph.Read(result).Should().Equal("city/epic", "river/epic");
+        (await store.LoadLatestAsync(skipped.ChildRunId, CancellationToken.None)).Should().BeNull();
+        outcomes.Where(x => x.Invocation.NodeId == skipped.NodeId).Select(x => x.Outcome)
+            .OfType<PregelInvocationOutcome.Skipped>().Should().Contain(x => x.Reason == "low tier");
+    }
+
+    [Fact]
+    public async Task SkipIf_CannotChangeAnAlreadyCompiledGraph()
+    {
+        var child = Pregel.Define<Unit>("report").Start(Report).Compile();
+        var chain = Pregel.Define<Unit>("daily").Start(ReportInput).Graph("report", child);
+        var graph = chain.Compile();
+
+        var mutate = () => chain.SkipIf(_ => "too late");
+        mutate.Should().Throw<InvalidOperationException>();
+        graph.Compiled.Definition.Mutations.Should().ContainSingle().Which.HasResultSkipCondition.Should().BeFalse();
+        graph.Read(await graph.RunAsync(new Unit("city", "epic"))).Should().Be("city/epic");
+    }
+
+    [Fact]
     public async Task SkipIf_OnTheGraphCall_MarksThatItemSkipped_AndMatchesTheLegacySkipReason()
     {
         var store = new InMemoryPregelCheckpointStore();
@@ -126,6 +162,8 @@ public sealed class CollectionBranchTests
     private sealed record Unit(string Scene, string Tier);
 
     private static Run Plan(Run run, PregelNodeContext context, CancellationToken token) => run;
+
+    private static Unit ReportInput(Unit unit, PregelNodeContext context, CancellationToken token) => unit;
 
     private static string Report(Unit unit, PregelNodeContext context, CancellationToken token) => $"{unit.Scene}/{unit.Tier}";
 

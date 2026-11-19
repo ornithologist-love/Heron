@@ -17,6 +17,11 @@ public sealed partial class PregelEngine
     private async ValueTask ExecuteMutationInstanceAsync(PregelMutationInstanceRuntime instance,
         PregelNodeContext context, PregelRunOptions options, CancellationToken token)
     {
+        if (instance.Instance.SkipReason is { } reason)
+        {
+            context.MutationSkipReason = reason;
+            return;
+        }
         var graph = instance.Mutation.Template;
         var id = instance.Instance.ChildRunId;
         var scope = options.SubgraphScope ?? new(context.Checkpoint.GraphFingerprint, []);
@@ -163,7 +168,7 @@ public sealed partial class PregelEngine
                     case PregelCommand.CompleteMutation complete:
                         var join = plans.FindIndex(x => x.Id == complete.PlanId);
                         if (join < 0 || graph.Mutations[plans[join].MutationId].Definition.Join != outcome.Invocation.NodeId
-                            || plans[join].Results.Count != plans[join].Instances.Count)
+                            || plans[join].Results.Count != plans[join].Instances.Count(item => item.SkipReason is null))
                             throw new PregelException("mutation_join_incomplete", complete.PlanId);
                         plans[join] = plans[join] with { Completed = true };
                         break;
