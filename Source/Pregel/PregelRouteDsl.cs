@@ -106,9 +106,11 @@ public sealed partial class PregelLinearGraphDsl<TInput>
         for (var index = 0; index < branches.Length; index++)
         {
             var existing = _builder.DefinedNodeIds.ToHashSet();
-            var branch = new PregelLinearGraphDsl<TInput>(_builder, decision, _input);
+            var branch = new PregelLinearGraphDsl<TInput>(_builder, decision, _input).AsBranch($"{prefix}:branch:{branches[index].Key}");
             branches[index].Configure(branch);
             if (branch._first is null) throw new ArgumentException("Route branches must contain a node.", nameof(branches));
+            // The leading When scope goes first so the route's own scope, inserted ahead of it, is checked first.
+            branch.CloseBranch();
             _builder.AddRouteScope(_builder.DefinedNodeIds.Where(node => !existing.Contains(node)).ToArray(),
                 decision.Id, selection, branches[index].Key);
             branch.ThenContext(arrivals[index].Value, (context, _) =>

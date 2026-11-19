@@ -51,7 +51,9 @@ Pregel 的节点、通道和同步屏障让并发写入有确定的提交边界�
 
 `PregelMutationDsl` 将规则注册到 `CompiledPregelGraph.Mutations`：规则 ID、串行或并行模式、入口、汇合点、输入输出 codec 和已编译子图。父图指纹包含这些结构字段、子图指纹及规则格式版本。第一版只支持实例化已编译子图，不提供任意替换或删除正在执行节点的接口。
 
-结果链的 `Parallel(id, graph, select)` 用已提交的上游结果选择子图输入。相同的调用 ID、子图和跳过规则与旧的并行 `Mutate` 编译成同一规则，图指纹和持久化运行兼容。固定分支的 `Parallel` 由同一图内的命名屏障汇合。
+集合分支（`Parallel`、`ForEach` 的 `id, items, key, branch` 写法）编译成同一种 mutation 规则：`items` 与 `key` 合成带 Key 的条目，分支 lambda 在构图时编成独立的模板图，图 ID 为父图 ID 加展开 ID，revision 随父图。模板只含一次从分支起点发起、不带条件的 `Graph` 调用时，直接以被调用的图作模板，规则、模板指纹与等价的旧 `Mutate` 相同，已有检查点可以继续恢复。`SkipIf` 写入该调用的结果跳过规则，展平时一并带到展开规则上。固定分支的 `Parallel` 由同一图内的命名屏障汇合。
+
+分支开头的 `When` 生成一个隐藏的判断节点，把结果写进本次运行的选择通道。分支内的其余节点挂上与具名 Route 相同的 scope，判断不通过时产生原生 `Skipped`，屏障到达节点照常推进。
 
 展开入口从已提交上游状态读取带 Key 的集合，编码每份输入并产生 `Mutate` 命令。Pending Outcome 保存这份计划；屏障检查实例数量、Key 和来源，原子提交 `Checkpoint.Mutations`、`RunGraphRevision`、新增通道初值与首批调度包。提交成功才发布 `mutation.committed`。崩溃恢复从检查点重建相同实例和边，不重新选择条目；不兼容的计划格式或模板指纹明确拒绝恢复。
 

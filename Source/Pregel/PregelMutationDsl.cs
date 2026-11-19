@@ -11,12 +11,6 @@ public static class PregelMutationDsl
 
 public sealed partial class PregelResultGraphDsl<TInput, TOutput>
 {
-    /// <summary>Runs the selected child graphs in parallel and returns their results in selection order.</summary>
-    public PregelResultGraphDsl<TInput, IReadOnlyList<TResult>> Parallel<TItem, TResult>(string id,
-        PregelGraph<TItem, TResult> template, Func<TOutput, IReadOnlyList<PregelMutationItem<TItem>>> select,
-        Func<TResult, string?>? skipReason = null) =>
-        MutateCore(id, template, Plan(select), PregelMutationMode.Parallel, skipReason, out _);
-
     /// <summary>Compiles an expansion rule; item count and inputs are bound only after the upstream barrier.</summary>
     public PregelResultGraphDsl<TInput, IReadOnlyList<TResult>> Mutate<TItem, TResult>(string id,
         PregelGraph<TItem, TResult> template, Func<TOutput, IReadOnlyList<PregelMutationItem<TItem>>> select,
@@ -102,7 +96,8 @@ public sealed partial class PregelResultGraphDsl<TInput, TOutput>
         });
         _builder.DeclareRead(complete, children._output);
         _builder.AddEdge(children._tail!, complete);
-        return new(_builder, _input, output, complete);
+        return new PregelResultGraphDsl<TInput, TResult>(_builder, _input, output, complete)
+            .WithSkipTarget((PregelMutationRuntime<TItem, TResult>)_builder.Mutation(id));
     }
 
     /// <summary>Runs a child without a declared result and preserves this flow's committed output.</summary>

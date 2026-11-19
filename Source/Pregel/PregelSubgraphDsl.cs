@@ -21,11 +21,11 @@ public sealed partial class PregelLinearGraphDsl<TInput>
 {
     /// <summary>Passes the flow input directly to a typed child graph.</summary>
     public PregelResultGraphDsl<TInput, TResult> Graph<TResult>(string id,
-        PregelGraph<TInput, TResult> graph) => Subgraph(id, graph, static value => value);
+        PregelGraph<TInput, TResult> graph) => RootCall(id, () => Subgraph(id, graph, static value => value));
 
     /// <summary>Runs a child graph and preserves the flow input.</summary>
     public PregelLinearGraphDsl<TInput> Graph(string id,
-        PregelGraph<TInput> graph) => Subgraph(id, graph, static value => value);
+        PregelGraph<TInput> graph) => RootCall(id, () => Subgraph(id, graph, static value => value));
 
     public PregelResultGraphDsl<TInput, TResult> Subgraph<TResult>(string id,
         PregelGraph<TInput, TResult> graph) => Graph(id, graph);

@@ -873,10 +873,14 @@ public sealed partial class PregelLinearGraphDsl<TInput>
         return result!;
     }
 
-    /// <summary>Tests the run input before the current node; false records Skipped and continues.</summary>
+    /// <summary>
+    /// Tests the run input before the current node; false records Skipped and continues.
+    /// At the start of a branch it gates every node of that branch instead.
+    /// </summary>
     public PregelLinearGraphDsl<TInput> When(Func<TInput, bool> predicate, string skipReason = "运行条件不满足")
     {
         ArgumentNullException.ThrowIfNull(predicate);
+        if (TryGateBranch(predicate, skipReason)) return this;
         _builder.ConfigureCondition(_tail.Runtime, context => predicate(context.Read(_input)), skipReason);
         _builder.DeclareRead(_tail, _input);
         return this;
@@ -1000,10 +1004,11 @@ public sealed partial class PregelLinearGraphDsl<TInput>
         var barrier = _builder.NamedBarrierChannel($"{prefix}:complete", arrivals);
         for (var index = 0; index < branches.Length; index++)
         {
-            var branch = new PregelLinearGraphDsl<TInput>(_builder, fork, _input);
+            var branch = new PregelLinearGraphDsl<TInput>(_builder, fork, _input).AsBranch($"{prefix}:branch:{index}");
             branches[index](branch);
             if (branch._tail == fork)
                 throw new ArgumentException("Parallel branches must contain at least one node.", nameof(branches));
+            branch.CloseBranch();
             branch.ThenContext(arrivals[index].Value, (context, _) =>
             {
                 context.Write(barrier, PregelUnit.Value);

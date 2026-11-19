@@ -51,7 +51,31 @@ A stage's condition is checked once on entry; when false its nodes are skipped a
 
 A node's return value feeds the next node, or bind explicitly with a selector. For shared data use `flow.State<TState>("state", initial)`. State must be serializable: records and value types, never `Process`, `Stream` or delegates. For a process, keep its ID and start time.
 
-Use `.Parallel(a => a.Then(A), b => b.Then(B))` for independent branches, writing to separate state slots. Never draw dependent operations as parallel.
+Use `.Parallel(a => a.Then(A), b => b.Then(B))` for independent branches, writing to separate state slots. Never draw dependent operations as parallel. A `When` at the start of a branch gates the whole branch. A `When` after a `Then` gates only that node:
+
+```csharp
+stage.Parallel(
+    node => node.When(i => i.InstallNode, "Node.js not selected")
+        .Then(DetectNode)
+        .Then(InstallNode).When(i => !_probes["Node"].Ready, "Node.js already installed")
+        .Then(VerifyNode),
+    git => git.When(i => i.InstallGit, "Git not selected")
+        .Then(DetectGit).Then(InstallGit).Then(VerifyGit));
+```
+
+When the branches come from data, run one branch per item. `Parallel` starts them together and `ForEach` runs them one after another. Each item is its own child run:
+
+```csharp
+stage.Parallel("reports", run => run.Units.Where(unit => unit.Tier == "epic"),
+    key: unit => $"{unit.Date}/{unit.Scene}/{unit.Tier}",
+    unit => unit.Graph("report", reportGraph).SkipIf(report => report.SkipReason));
+```
+
+- The `items` lambda picks one collection with at most one `Where`. For grouping, building new objects or reading state, pass a named method instead of the lambda, or compute the list in an upstream node. It must be pure: no IO, clock or randomness.
+- `key` is the stable business identity of an item and is used after a restart. Never use an index or a GUID. `title:` and `target:` are optional.
+- Filter with `Where` to leave an item out entirely. Start the branch with `When` to show it as skipped.
+- `SkipIf` directly follows a `Graph` call and marks it skipped when it returns a reason.
+- Do not write `Mutate` or `PregelMutationItem` in new graphs. They remain only for scripts that are already deployed.
 
 Call a compiled graph with `.Graph("child", childGraph)`. The current value must match the called graph's input type. If it needs conversion, do that in a named `Then` node before the call. The engine records the child run and passes its result to the next node.
 

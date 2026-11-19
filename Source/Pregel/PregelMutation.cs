@@ -80,7 +80,7 @@ public sealed record PregelMutationSnapshot(long Revision, PregelGraphDefinition
 
 internal abstract class PregelMutationRuntime(PregelMutationDefinition definition)
 {
-    public PregelMutationDefinition Definition { get; } = definition;
+    public PregelMutationDefinition Definition { get; protected set; } = definition;
     public abstract CompiledPregelGraph Template { get; }
     public abstract PregelVariables Bind(PregelEncodedValue input);
     public abstract PregelEncodedValue Result(PregelRunResult result);
@@ -90,11 +90,22 @@ internal abstract class PregelMutationRuntime(PregelMutationDefinition definitio
 internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefinition definition,
     CompiledPregelGraph template, PregelVariable<TItem> inputVariable, Func<PregelRunResult, TResult> readResult,
     PregelVariable<IReadOnlyList<TResult>> output, Func<TResult, string?>? skipReason)
-    : PregelMutationRuntime(definition)
+    : PregelMutationRuntime(definition), IPregelResultSkip<TResult>
 {
     private readonly ICheckpointCodec<TItem> _input = CheckpointCodecs.Default<TItem>();
     private readonly ICheckpointCodec<TResult> _result = CheckpointCodecs.Json<TResult>(allowNull: true);
+    private Func<TResult, string?>? _skipReason = skipReason;
     public override CompiledPregelGraph Template => template;
+    internal PregelVariable<TItem> InputVariable => inputVariable;
+    internal Func<PregelRunResult, TResult> ReadResult => readResult;
+    internal Func<TResult, string?>? ResultSkip => _skipReason;
+
+    public void SkipIf(Func<TResult, string?> reason)
+    {
+        if (_skipReason is not null) throw new InvalidOperationException("A result skip condition is already declared.");
+        _skipReason = reason;
+        Definition = Definition with { HasResultSkipCondition = true };
+    }
     public override PregelVariables Bind(PregelEncodedValue input)
     {
         if (input.CodecId != _input.CodecId) throw new PregelException("mutation_input_codec", "Mutation input codec changed.");
@@ -103,7 +114,7 @@ internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefini
     public override PregelEncodedValue Result(PregelRunResult result) => new(_result.CodecId, _result.Encode(readResult(result)));
     public override string? SkipReason(PregelEncodedValue result)
     {
-        var reason = skipReason?.Invoke(_result.Decode(result.Data));
+        var reason = _skipReason?.Invoke(_result.Decode(result.Data));
         if (reason is not null && string.IsNullOrWhiteSpace(reason))
             throw new PregelException("invalid_mutation_skip_reason", "A skipped mutation result requires a nonempty reason.");
         return reason;
@@ -141,7 +152,7 @@ internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefini
             return _result.Decode(value.Data);
         }).ToArray();
         context.Write(output, results);
-        if (results.Length > 0 && skipReason is not null)
+        if (results.Length > 0 && _skipReason is not null)
         {
             var reasons = plan.Instances.Select(item => SkipReason(plan.Results[item.Key])).ToArray();
             if (reasons.All(reason => reason is not null))
