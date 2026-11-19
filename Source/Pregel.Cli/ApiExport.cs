@@ -13,9 +13,9 @@ internal static partial class ApiExport
     private static readonly Section[] Sections =
     [
         new("Graph definition and DSL", "Heron.Pregel",
-            ["Pregel", "PregelGraphDsl", "PregelLinearGraphDsl", "PregelResultGraphDsl", "PregelMutationDsl", "PregelGraph"]),
+            ["Pregel", "PregelGraphDsl", "PregelLinearGraphDsl", "PregelResultGraphDsl", "PregelGraph"]),
         new("Node context, state, expansion and routing", "Heron.Pregel",
-            ["PregelNodeContext", "PregelVariable", "PregelMutationItem", "PregelMutationMode", "PregelRetryPolicy",
+            ["PregelNodeContext", "PregelVariable", "PregelRetryPolicy",
              "PregelRoute", "MutexRuleAttribute", "PregelSubgraphAttribute"]),
         new("Automation templates", "Heron.Pregel.Automation",
             ["AutomationTemplate", "AutomationGraphTemplateBase", "AutomationGraphTemplate", "AutomationRunResult",

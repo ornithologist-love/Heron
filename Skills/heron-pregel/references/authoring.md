@@ -75,7 +75,6 @@ stage.Parallel("reports", run => run.Units.Where(unit => unit.Tier == "epic"),
 - `key` is the stable business identity of an item and is used after a restart. Never use an index or a GUID. `title:` and `target:` are optional.
 - Filter with `Where` to leave an item out entirely. Start the branch with `When` to show it as skipped.
 - `SkipIf` directly follows a `Graph` call and marks it skipped when it returns a reason.
-- Do not write `Mutate` or `PregelMutationItem` in new graphs. They remain only for scripts that are already deployed.
 
 Call a compiled graph with `.Graph("child", childGraph)`. The current value must match the called graph's input type. If it needs conversion, do that in a named `Then` node before the call. The engine records the child run and passes its result to the next node.
 

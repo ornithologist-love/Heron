@@ -50,13 +50,9 @@ public sealed class CollectionBranchTests
     [Theory]
     [InlineData(PregelMutationMode.Parallel)]
     [InlineData(PregelMutationMode.Sequential)]
-    public async Task CollectionBranch_OfOneGraphCall_CompilesToTheLegacyRule_AndExpandsOnlySelectedItems(PregelMutationMode mode)
+    public async Task CollectionBranch_OfOneGraphCall_UsesThatGraph_AndExpandsOnlySelectedItems(PregelMutationMode mode)
     {
         var child = Pregel.Define<Unit>("report").Start(Report).Compile();
-        var legacy = Pregel.Define<Run>("daily").Start(Plan)
-            .Mutate("reports", child, run => run.Units.Where(unit => unit.Tier == "epic")
-                .Select(unit => new PregelMutationItem<Unit>($"{unit.Scene}/{unit.Tier}", unit)).ToArray(), mode)
-            .Compile();
         var planned = Pregel.Define<Run>("daily").Start(Plan);
         Func<Run, IEnumerable<Unit>> epic = run => run.Units.Where(unit => unit.Tier == "epic");
         Func<Unit, string> key = unit => $"{unit.Scene}/{unit.Tier}";
@@ -66,7 +62,9 @@ public sealed class CollectionBranchTests
 
         var result = await graph.RunAsync(new Run([new("city", "epic"), new("city", "high"), new("forest", "epic")]));
 
-        graph.Compiled.Definition.Fingerprint.Should().Be(legacy.Compiled.Definition.Fingerprint);
+        var rule = graph.Compiled.Definition.Mutations.Should().ContainSingle().Which;
+        rule.Template.Fingerprint.Should().Be(child.Compiled.Definition.Fingerprint);
+        rule.Mode.Should().Be(mode);
         result.Status.Should().Be(PregelRunStatus.Completed);
         graph.Read(result).Should().Equal("city/epic", "forest/epic");
     }
@@ -127,15 +125,11 @@ public sealed class CollectionBranchTests
     }
 
     [Fact]
-    public async Task SkipIf_OnTheGraphCall_MarksThatItemSkipped_AndMatchesTheLegacySkipReason()
+    public async Task SkipIf_OnTheGraphCall_MarksThatItemSkipped_AndKeepsItsResult()
     {
         var store = new InMemoryPregelCheckpointStore();
         var child = Pregel.Define<Unit>("report").Start(Report).Compile();
         Func<string, string?> skip = report => report.StartsWith("forest", StringComparison.Ordinal) ? "no data" : null;
-        var legacy = Pregel.Define<Run>("daily").Start(Plan)
-            .Mutate("reports", child, run => run.Units.Select(unit => new PregelMutationItem<Unit>(unit.Scene, unit)).ToArray(),
-                PregelMutationMode.Parallel, skip)
-            .Compile();
         var graph = Pregel.Define<Run>("daily").Start(Plan)
             .Parallel("reports", run => run.Units, unit => unit.Scene, unit => unit.Graph("report", child).SkipIf(skip))
             .Compile();
@@ -143,8 +137,8 @@ public sealed class CollectionBranchTests
         var result = await graph.Prepare(new Run([new("city", "epic"), new("forest", "epic")]), engine: new PregelEngine(store)).RunAsync();
         var outcomes = (await store.LoadHistoryAsync(result.RunId)).SelectMany(checkpoint => checkpoint.CommittedOutcomes);
 
-        graph.Compiled.Definition.Fingerprint.Should().Be(legacy.Compiled.Definition.Fingerprint);
         result.Status.Should().Be(PregelRunStatus.Completed);
+        graph.Read(result).Should().Equal("city/epic", "forest/epic");
         outcomes.Select(outcome => outcome.Outcome).OfType<PregelInvocationOutcome.Skipped>()
             .Should().Contain(outcome => outcome.Reason == "no data");
     }

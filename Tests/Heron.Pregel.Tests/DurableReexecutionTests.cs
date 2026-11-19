@@ -79,8 +79,10 @@ public sealed class DurableReexecutionTests : IDisposable
     {
         var flow = new MutationFlow();
         var child = Pregel.Define<int>("child").Start(flow.Prepare).Then(flow.Finish).Compile();
-        var graph = Pregel.Define<int>("parent").Start(MutationFlow.Input)
-            .Mutate("items", child, MutationFlow.Select, mode).Compile();
+        var parent = Pregel.Define<int>("parent").Start(MutationFlow.Input);
+        var graph = mode == PregelMutationMode.Parallel
+            ? parent.Parallel("items", MutationFlow.Select, value => value.ToString(), item => item.Graph("child", child)).Compile()
+            : parent.ForEach("items", MutationFlow.Select, value => value.ToString(), item => item.Graph("child", child)).Compile();
         var source = await graph.Prepare(0, engine: Engine()).RunAsync();
         source.Status.Should().Be(PregelRunStatus.Failed);
         var derived = new PregelRunId("derived-mutation");
@@ -102,7 +104,7 @@ public sealed class DurableReexecutionTests : IDisposable
         public readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> Prepared = new();
         public readonly System.Collections.Concurrent.ConcurrentDictionary<int, int> Finished = new();
         public static int Input(int value, PregelNodeContext context, CancellationToken token) => value;
-        public static IReadOnlyList<PregelMutationItem<int>> Select(int _) => [new("one", 1), new("two", 2)];
+        public static IReadOnlyList<int> Select(int _) => [1, 2];
         public int Prepare(int value, PregelNodeContext context, CancellationToken token) { Prepared.AddOrUpdate(value, 1, (_, n) => n + 1); return value; }
         public int Finish(int value, PregelNodeContext context, CancellationToken token) { Finished.AddOrUpdate(value, 1, (_, n) => n + 1); if (Fail && value == 2) throw new IOException("synthetic child failure"); return value; }
     }

@@ -67,7 +67,6 @@ internal static class PregelBranchTemplates
     }
 
     // A branch that only calls one compiled graph runs that graph directly, without an extra nesting level.
-    // The resulting rule equals the legacy Mutate of the same graph, so fingerprints stay compatible.
     private static PregelBranchTemplate<TItem, TResult>? Flatten<TItem, TResult>(PregelGraphBuilder builder) =>
         builder.RootGraphCall is { Runtime: PregelMutationRuntime<TItem, TResult> call } root
         && !builder.HasControlFlow && builder.DefinedNodeIds.Count == root.Nodes.Count + 1
@@ -144,9 +143,9 @@ public sealed partial class PregelLinearGraphDsl<TInput>
     }
 
     /// <summary>Records the root Graph call of a collection branch so a branch made of only that call can be flattened.</summary>
-    private T RootCall<T>(string id, Func<T> call)
+    private T RootCall<T>(string id, bool canFlatten, Func<T> call)
     {
-        if (!_templateRoot || _first is not null || _builder.RootGraphCall is not null) return call();
+        if (!canFlatten || !_templateRoot || _first is not null || _builder.RootGraphCall is not null) return call();
         var before = _builder.DefinedNodeIds.ToHashSet();
         var result = call();
         _builder.RootGraphCall = new(_builder.Mutation(id),
@@ -287,7 +286,7 @@ public sealed partial class PregelResultGraphDsl<TInput, TOutput>
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(key);
         return MutateCore(id, template.Graph, template.Input, template.Read,
-            (value, _, _) => Select(items(value), key, title, target), mode, template.SkipReason, out entry,
+            value => Select(items(value), key, title, target), mode, template.SkipReason, out entry,
             itemSkipReason: template.ItemSkipReason);
     }
 

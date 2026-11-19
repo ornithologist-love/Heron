@@ -7,7 +7,7 @@ namespace Heron.Pregel;
 public enum PregelMutationMode { Sequential, Parallel }
 
 /// <summary>A stable business key and the input of one instance of a compiled template.</summary>
-public sealed record PregelMutationItem<T>(string Key, T Input, string? Title = null)
+internal sealed record PregelMutationItem<T>(string Key, T Input, string? Title = null)
 {
     /// <summary>Empty executes locally; a named target is resolved by the host's subgraph executor.</summary>
     public string Target { get; init; } = "";

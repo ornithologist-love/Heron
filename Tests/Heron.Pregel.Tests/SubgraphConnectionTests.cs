@@ -4,18 +4,13 @@ namespace Heron.Pregel.Tests;
 public sealed class SubgraphConnectionTests
 {
     [Fact]
-    public async Task Graph_ForwardsCurrentResult_AndMatchesLegacySubgraphCalls()
+    public async Task Graph_ForwardsCurrentResult_ToTheNestedGraph()
     {
         var leaf = Pregel.Define<int>("leaf").Start(Double).Compile();
         var child = Pregel.Define<int>("child")
             .Stage("inner", "Inner", stage => stage.Graph("leaf", leaf))
             .Compile();
         var direct = Pregel.Define<string>("parent").Start(Length).Graph("call", child).Compile();
-        var legacy = Pregel.Define<string>("parent").Start(Length).Subgraph("call", child).Compile();
-        var original = Pregel.Define<string>("parent").Start(Length).Subgraph("call", child, value => value).Compile();
-
-        direct.Compiled.Definition.Fingerprint.Should().Be(original.Compiled.Definition.Fingerprint);
-        direct.Compiled.Definition.Fingerprint.Should().Be(legacy.Compiled.Definition.Fingerprint);
         var run = await direct.RunAsync("abc");
         run.Status.Should().Be(PregelRunStatus.Completed);
         direct.Read(run).Should().Be(6);

@@ -69,7 +69,7 @@ public sealed class ProtocolBoundaryTests
     {
         var child = Graph.Define<MockInput>("mock-child", "1").Start(Transform).Compile();
         var root = Graph.Define<MockInput>("mock-root", "1").Start(Pass)
-            .Subgraph("branch", child, input => input).Compile().Compiled;
+            .Graph("branch", child, target: _ => "mock-machine").Compile().Compiled;
         var mutation = root.Definition.Mutations.Single();
         var codec = CheckpointCodecs.Json<MockInput>();
         return (root, new("mock-parent", mutation.Entry.Value, "mock-invocation", "mock-child-run", [mutation.Id],
