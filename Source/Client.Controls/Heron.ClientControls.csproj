@@ -6,6 +6,7 @@
     <PackageId>Heron.ClientControls</PackageId>
     <Description>Reusable Avalonia controls, semantic themes and color tokens.</Description>
     <IsPackable>true</IsPackable>
+    <PackHeronFontCharacters>true</PackHeronFontCharacters>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>

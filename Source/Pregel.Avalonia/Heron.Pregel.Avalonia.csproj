@@ -5,6 +5,7 @@
     <RootNamespace>Heron.Pregel.Avalonia</RootNamespace>
     <Description>Reusable Avalonia workspace for durable automation tasks, runs, parameters, logs and artifacts.</Description>
     <IsPackable>true</IsPackable>
+    <PackHeronFontCharacters>true</PackHeronFontCharacters>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>

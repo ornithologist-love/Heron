@@ -1,0 +1,61 @@
+<Project>
+  <PropertyGroup Condition="'$(PackHeronFontCharacters)' == 'true'">
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeHeronFontCharactersInPackage</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <UsingTask TaskName="GenerateHeronFontCharacters" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <MarkupFiles ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OutputFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.Globalization" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var characters = new SortedSet<int>();
+        var attribute = new Regex("=\"([^\"]*)\"");
+        var text = new Regex(">([^<>]+)<");
+        foreach (var file in MarkupFiles)
+        {
+            var markup = File.ReadAllText(file.GetMetadata("FullPath"));
+            foreach (var match in attribute.Matches(markup).Cast<Match>().Concat(text.Matches(markup).Cast<Match>()))
+            {
+                var value = match.Groups[1].Value;
+                for (var index = 0; index < value.Length; index++)
+                {
+                    if (char.IsSurrogatePair(value, index))
+                    {
+                        characters.Add(char.ConvertToUtf32(value, index));
+                        index++;
+                    }
+                    else if (!char.IsControl(value[index]) && !char.IsSurrogate(value[index]))
+                    {
+                        characters.Add(value[index]);
+                    }
+                }
+            }
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(OutputFile));
+        var lines = characters.Select(value => "U+" + value.ToString("X4", CultureInfo.InvariantCulture));
+        File.WriteAllText(OutputFile, string.Join("\n", lines) + "\n", new UTF8Encoding(false));
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="IncludeHeronFontCharactersInPackage">
+    <PropertyGroup>
+      <_HeronFontCharacters>$(IntermediateOutputPath)Heron.FontCharacters.txt</_HeronFontCharacters>
+    </PropertyGroup>
+    <ItemGroup>
+      <_HeronFontMarkup Include="**/*.axaml;**/*.xaml" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    </ItemGroup>
+    <GenerateHeronFontCharacters MarkupFiles="@(_HeronFontMarkup)" OutputFile="$(_HeronFontCharacters)" />
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(_HeronFontCharacters)" PackagePath="build/Heron.FontCharacters.txt" />
+    </ItemGroup>
+  </Target>
+</Project>

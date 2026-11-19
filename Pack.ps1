@@ -5,6 +5,7 @@ param(
     [string]$Feed,
     [switch]$List,
     [switch]$ValidateOnly,
+    [switch]$NuGetOnly,
     [switch]$ServerOnly,
     [ValidateSet('linux-amd64', 'windows-amd64')]
     [string]$ServerRuntime = 'linux-amd64',
@@ -18,6 +19,7 @@ $OutputEncoding = [Console]::OutputEncoding
 
 if ($ServerOnly) {
     if ($ValidateOnly) { throw '-ValidateOnly validates .NET packages; it cannot be combined with -ServerOnly.' }
+    if ($NuGetOnly) { throw '-NuGetOnly and -ServerOnly are mutually exclusive.' }
     & (Join-Path $PSScriptRoot 'Pack.Server.ps1') -Output $Output -Runtime $ServerRuntime -GoExecutable $GoExecutable -List:$List
     return
 }
@@ -72,8 +74,9 @@ if (@($packages.Id | Sort-Object -Unique).Count -ne $packages.Count) {
 }
 $outputDirectory = [System.IO.Path]::GetFullPath($Output, $PSScriptRoot)
 if ($List) {
-    [pscustomobject]@{ Version = $version; HostApi = $hostApi; Baseline = $baselineVersion; Output = $outputDirectory; Feed = $Feed; Packages = $packages;
-        Server = "Heron.AutomationTenants.Server.$version.$ServerRuntime.tar.gz" } | ConvertTo-Json -Depth 4
+    $plan = [ordered]@{ Version = $version; HostApi = $hostApi; Baseline = $baselineVersion; Output = $outputDirectory; Feed = $Feed; Packages = $packages }
+    if (!$NuGetOnly) { $plan.Server = "Heron.AutomationTenants.Server.$version.$ServerRuntime.tar.gz" }
+    [pscustomobject]$plan | ConvertTo-Json -Depth 4
     return
 }
 if ($packages.Count -eq 0) {
@@ -170,4 +173,6 @@ if (!$resolvedStaging.StartsWith($safeRoot, [System.StringComparison]::OrdinalIg
 Remove-Item -LiteralPath $resolvedStaging -Recurse -Force
 if ($ValidateOnly) { Write-Host "Package validation passed; no archives delivered."; return }
 Write-Host "Packages ready: $outputDirectory"
-& (Join-Path $PSScriptRoot 'Pack.Server.ps1') -Output $outputDirectory -Runtime $ServerRuntime -GoExecutable $GoExecutable
+if (!$NuGetOnly) {
+    & (Join-Path $PSScriptRoot 'Pack.Server.ps1') -Output $outputDirectory -Runtime $ServerRuntime -GoExecutable $GoExecutable
+}

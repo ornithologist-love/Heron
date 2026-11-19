@@ -1,13 +1,15 @@
 ---
 type: guide
-covers: [Version.props, Directory.Build.props, Directory.Packages.props, Pack.ps1, Pack.Server.ps1, Source/ClientFramework.Compatibility/**, nuget.config, LICENSE]
+covers: [Version.props, Directory.Build.props, Directory.Build.targets, Directory.Packages.props, Pack.ps1, Pack.Server.ps1, Source/ClientFramework.Compatibility/**, nuget.config, LICENSE]
 ---
 
 # Package workflow
 
 Heron produces framework packages independently of its consumers. The default output is `../Binaries/Heron`, next to the repository. A consumer's local feed is an explicit delivery destination for the produced archives. Producing packages never edits a consumer's project references or central package versions.
 
-The root MIT license applies to Heron source and is included with each package through the shared build properties. ClientControls also carries its third-party notices, including the original licenses for adapted controls and icons.
+The root MIT license applies to Heron source and is included with each package through the shared build properties. Package metadata links to the public repository and records the source commit used by SourceLink. ClientControls also carries its third-party notices, including the original licenses for adapted controls and icons.
+
+ClientControls and Pregel Avalonia ship a generated character inventory in `build/Heron.FontCharacters.txt` for hosts that subset their fonts. Each inventory lists the Unicode scalar values used in that package's XAML attributes and text. The file uses UTF-8 and one unique uppercase `U+XXXX` code point per line, sorted by numeric value. Hosts merge both inventories with their own markup and character requirements.
 
 The repository inherits the existing workspace conventions: source belongs in `Source`, durable documentation in `Docs`, process notes in ignored `.work`, and deliverables in the workspace's `Binaries/Heron`. Repository extraction changes ownership; it does not reset directory naming, layering, development or documentation rules.
 
@@ -36,6 +38,8 @@ Build Release libraries in their normal output directories and collect local pac
 ```powershell
 pwsh -File ./Pack.ps1
 ```
+
+Use `pwsh -File ./Pack.ps1 -NuGetOnly` when preparing just the NuGet batch. Server artifacts are prepared independently with `-ServerOnly`.
 
 Packages are always collected in the output directory first. An explicit feed additionally receives the same archives. Relative paths resolve against this repository, independently of the caller's working directory:
 

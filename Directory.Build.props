@@ -13,6 +13,8 @@
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Authors>ornithologist</Authors>
     <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/ornithologist-love/Heron</RepositoryUrl>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
     <!-- Libraries opt in explicitly; samples and build tools are never packages by default. -->
     <IsPackable>false</IsPackable>
     <PackageReadmeFile>README.md</PackageReadmeFile>
