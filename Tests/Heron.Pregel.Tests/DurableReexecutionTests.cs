@@ -79,9 +79,13 @@ public sealed class DurableReexecutionTests : IDisposable
     {
         var flow = new MutationFlow();
         var child = Pregel.Define<int>("child").Start(flow.Prepare).Then(flow.Finish).Compile();
-        var graph = Pregel.Define<int>("parent").Start(MutationFlow.Input)
+        var legacy = Pregel.Define<int>("parent").Start(MutationFlow.Input)
             .Mutate("items", child, MutationFlow.Select, mode).Compile();
-        var source = await graph.Prepare(0, engine: Engine()).RunAsync();
+        var graph = mode == PregelMutationMode.Parallel
+            ? Pregel.Define<int>("parent").Start(MutationFlow.Input).Parallel("items", child, MutationFlow.Select).Compile()
+            : legacy;
+        graph.Compiled.Definition.Fingerprint.Should().Be(legacy.Compiled.Definition.Fingerprint);
+        var source = await legacy.Prepare(0, engine: Engine()).RunAsync();
         source.Status.Should().Be(PregelRunStatus.Failed);
         var derived = new PregelRunId("derived-mutation");
         await Engine().CreateReexecutionAsync(graph.Compiled, source.RunId, derived, new(PregelReexecutionMode.Continue, []));

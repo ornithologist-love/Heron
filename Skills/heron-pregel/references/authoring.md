@@ -53,7 +53,7 @@ A node's return value feeds the next node, or bind explicitly with a selector. F
 
 Use `.Parallel(a => a.Then(A), b => b.Then(B))` for independent branches, writing to separate state slots. Never draw dependent operations as parallel.
 
-To show a reused subgraph as a step, point a composite node at the real graph with `[PregelSubgraph(nameof(ChildGraph))]`.
+Call a compiled graph with `.Graph("child", childGraph)`. The current value must match the called graph's input type. If it needs conversion, do that in a named `Then` node before the call. The engine records the child run and passes its result to the next node.
 
 ## Human review
 

@@ -9,4 +9,6 @@ covers: [Source/Pregel/PregelDsl.cs, Source/Pregel.Scripting/PregelScript.cs]
 
 图结构、条件或类型契约变化时更新 revision，不用旧检查点解释新语义。外部操作须考虑失败后的重复调用；阶段不是事务，取消和 Finally 不会撤销已经完成的文件或网络操作。
 
+用 `Graph(id, graph)` 调用已经编译的图。当前链的值按其类型直接传入被调用的图，有结果时以该结果继续，无结果时继续使用原值。同一调用 ID、图和默认执行目标下，此接法与旧 `Subgraph` 的直接传值接法具有相同的图指纹和子运行身份。
+
 独立 CLI 的具体编写流程与示例由[Agent 编写指南](../Skills/heron-pregel/references/authoring.md)维护；命令生命周期见[操作指南](../Skills/heron-pregel/references/operations.md)。公开 API 从当前版本导出，避免维护手写的重载副本。
