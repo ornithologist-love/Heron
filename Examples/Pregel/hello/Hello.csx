@@ -19,7 +19,7 @@ static class HelloNodes
         context.Log(("Hello, " + input.Name).ToUpperInvariant());
 }
 
-return Pregel.Define<HelloInput>("Hello", "1")
+return Pregel.Define<HelloInput>("Hello")
     .Stage("greet", "Greet", stage => stage.Then(HelloNodes.Greet))
     .Stage("shout", "Shout", stage => stage.Then(HelloNodes.Shout),
         when: input => input.Shout, skipReason: "Shout is off")

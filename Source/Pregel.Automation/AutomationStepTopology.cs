@@ -23,14 +23,8 @@ public static class AutomationStepTopology
                 }).ToArray();
             var grouped = graph.Stages.Count == 0 ? steps : GroupStages(steps, graph);
             var projected = FromGraph(grouped, graph);
-            projected = projected.Select(step => step.IsFinally ? step with
+            return projected.Select(step => step.IsFinally ? step with
             { RecoveryFrom = projected.Where(source => !source.IsFinally).Select(source => source.Key).ToArray() } : step).ToArray();
-            return graph.Recovery is { } recovery
-                ? [.. projected, new AutomationStep(recovery.Id.Value, recovery.Metadata.Title, [recovery.Id.Value])
-                {
-                    DependsOn = [], IsRecovery = true, RecoveryFrom = projected.Select(step => step.Key).ToArray()
-                }]
-                : projected;
         }
         finally { ancestors.Remove(graph); }
     }

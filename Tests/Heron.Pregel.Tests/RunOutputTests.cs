@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 
 namespace Heron.Pregel.Tests;
@@ -11,11 +10,11 @@ public sealed class RunOutputTests
     {
         using var cancel = new CancellationTokenSource();
         var tasks = new Tasks(cancel);
-        var graph = tasks.Definition.Start(tasks.WriteAndCancel).Then(tasks.Next).Compile();
+        var graph = Pregel.Define<int>("output-test").Then(tasks.WriteAndCancel).Then(tasks.Next).Compile();
         var engine = new PregelEngine();
-        var result = await graph.RunAsync(engine, cancellationToken: cancel.Token);
+        var result = await graph.Prepare(0, new() { Engine = engine }).RunAsync(cancel.Token);
         Assert.Equal(PregelRunStatus.Cancelled, result.Status);
-        Assert.Equal(42, graph.Read(result, tasks.Output));
+        Assert.Equal(42, graph.Read(result));
         Assert.False(tasks.NextRan);
         Assert.Equal(PregelRunStatus.Cancelled, (await engine.GetStateAsync(result.RunId))!.Status);
     }
@@ -24,11 +23,19 @@ public sealed class RunOutputTests
     public async Task CancellationInsideNode_DoesNotCommitPartialWrites()
     {
         using var cancel = new CancellationTokenSource();
-        var tasks = new Tasks(cancel);
-        var graph = tasks.Definition.Start(tasks.CancelWithin).Compile();
-        var result = await graph.RunAsync(cancel.Token);
+        var builder = new PregelGraphBuilder("cancel-pending-output");
+        var output = builder.Output("output", 0);
+        var node = builder.Node("cancel-with-write", (context, token) =>
+        {
+            context.Write(output, 42);
+            cancel.Cancel();
+            token.ThrowIfCancellationRequested();
+            return ValueTask.CompletedTask;
+        });
+        var graph = builder.SetEntry(node).Compile();
+        var result = await new PregelEngine().StartAsync(graph, cancel.Token);
         Assert.Equal(PregelRunStatus.Cancelled, result.Status);
-        Assert.Equal(0, graph.Read(result, tasks.Output));
+        Assert.Equal(0, graph.Read(result, output));
     }
 
     [Fact]
@@ -36,9 +43,10 @@ public sealed class RunOutputTests
     {
         using var cancel = new CancellationTokenSource();
         var tasks = new Tasks(cancel);
-        var graph = tasks.Definition.Start(tasks.Fail, new PregelRetryPolicy(3, TimeSpan.FromSeconds(30))).Compile();
+        var graph = Pregel.Define("retry-cancellation").Then(tasks.Fail)
+            .Retry(new(3, TimeSpan.FromSeconds(30))).Compile();
         var observer = new Observer(value => { if (value.Kind == "node.finished") cancel.Cancel(); });
-        var result = await graph.RunAsync(new PregelEngine(), new PregelRunOptions(Observer: observer), cancel.Token);
+        var result = await graph.RunAsync(PregelUnit.Value, new(Observer: observer), cancel.Token);
         Assert.Equal(PregelRunStatus.Cancelled, result.Status);
     }
 
@@ -66,31 +74,24 @@ public sealed class RunOutputTests
         finally { Directory.Delete(folder, true); }
     }
 
-    private sealed class Tasks
+    private sealed class Tasks(CancellationTokenSource? cancel = null)
     {
-        private readonly CancellationTokenSource? _cancel;
-        public PregelTaskGraphDsl Definition { get; } = Pregel.Define("output-test");
-        public PregelVariable<int> Output { get; }
-        public PregelVariable<int> Input { get; } = null!;
         public bool NextRan { get; private set; }
-        public Tasks(CancellationTokenSource? cancel = null)
+
+        public int WriteAndCancel(int value, PregelNodeContext context, CancellationToken token)
         {
-            _cancel = cancel;
-            Output = Definition.Output("output", 0);
-            if (cancel == null) Input = Definition.Variable<int>("input");
+            cancel!.Cancel();
+            return 42;
         }
-        public void WriteAndCancel(PregelNodeContext context) { context.Write(Output, 42); _cancel!.Cancel(); }
-        public Task CancelWithin(PregelNodeContext context, CancellationToken token)
+
+        public Task Next(int value, PregelNodeContext context, CancellationToken token)
         {
-            context.Write(Output, 42);
-            _cancel!.Cancel();
-            token.ThrowIfCancellationRequested();
+            NextRan = true;
+            context.Log("next");
             return Task.CompletedTask;
         }
-        public void Next(PregelNodeContext context) { NextRan = true; context.Log("next"); }
-        public void Copy(PregelNodeContext context) { context.Write(Output, context.Read(Input)); context.Log("copied"); }
-        public void Fail(PregelNodeContext context) => throw new InvalidOperationException("retry me");
-        public void Retry(PregelNodeContext context) { context.Log("attempt"); if (context.AttemptNumber == 1) throw new IOException(); }
+        public void Fail(PregelUnit _, PregelNodeContext context, CancellationToken token) =>
+            throw new InvalidOperationException("retry me");
     }
 
     private sealed class Observer(Action<PregelRunEvent>? callback = null) : IPregelRunObserver

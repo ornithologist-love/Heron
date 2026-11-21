@@ -46,7 +46,7 @@ internal static class AutomationScriptLoader
         var directory = Path.GetDirectoryName(path)!;
         var options = ScriptOptions.Default.WithFilePath(path)
             .AddReferences(typeof(IAutomationTemplate).Assembly,
-                typeof(System.ComponentModel.DisplayNameAttribute).Assembly, typeof(PregelGraph).Assembly,
+                typeof(System.ComponentModel.DisplayNameAttribute).Assembly, typeof(Pregel).Assembly,
                 typeof(PregelScript).Assembly, typeof(ProcessExecution).Assembly, typeof(ProcessStartInfo).Assembly,
                 typeof(JsonElement).Assembly)
             .AddReferences(AutomationRuntime.ScriptReferences)
@@ -87,7 +87,7 @@ internal static class AutomationScriptLoader
             template = returned is IAutomationTemplate adapter ? adapter
                 : returned is { } graph && DynamicPregelGraph.IsGraphType(graph.GetType())
                     ? AutomationGraphScript.Create(DynamicPregelGraph.Adapt(graph), path, id, stateRoot)
-                : throw new InvalidOperationException("脚本须返回已编译的 Pregel Graph 或 IAutomationTemplate；辅助文件请由入口脚本 #load。");
+                : throw new InvalidOperationException("脚本须返回已编译的 PregelGraph<TInput, TOutput> 或 IAutomationTemplate；辅助文件请由入口脚本 #load。");
             if (template is IAutomationGraphRuntimeConsumer graphTemplate)
                 graphTemplate.ConfigureGraphRuntime(id, path, stateRoot);
             var inputPath = Path.Combine(directory, "Input.json");

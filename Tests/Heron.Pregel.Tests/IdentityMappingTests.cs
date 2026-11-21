@@ -30,8 +30,8 @@ namespace Heron.Pregel.Tests
                 "a namespace that only shares a prefix with a mapped name keeps its own identity");
         }
 
-        private static CompiledPregelGraph Build(Func<BashExecution> step) =>
-            Pregel.Define("identity-probe").Start(step).Compile().Compiled;
+        private static CompiledPregelGraph Build(Action<PregelUnit, PregelNodeContext, CancellationToken> step) =>
+            Pregel.Define<PregelUnit>("identity-probe").Then(step).Compile().Compiled;
     }
 }
 
@@ -39,7 +39,7 @@ namespace Heron.Pregel.Tests.IdentityProbe.Former
 {
     public sealed class Tasks
     {
-        public BashExecution Step() => NewBashExecution("echo step");
+        public void Step(PregelUnit _, PregelNodeContext context, CancellationToken token) { }
     }
 }
 
@@ -47,7 +47,7 @@ namespace Heron.Pregel.Tests.IdentityProbe.Renamed
 {
     public sealed class Tasks
     {
-        public BashExecution Step() => NewBashExecution("echo step");
+        public void Step(PregelUnit _, PregelNodeContext context, CancellationToken token) { }
     }
 }
 
@@ -55,7 +55,7 @@ namespace Heron.Pregel.Tests.IdentityProbe.RenamedSibling
 {
     public sealed class Tasks
     {
-        public BashExecution Step() => NewBashExecution("echo step");
+        public void Step(PregelUnit _, PregelNodeContext context, CancellationToken token) { }
     }
 }
 
@@ -63,6 +63,6 @@ namespace Heron.Pregel.Tests.IdentityProbe.FormerSibling
 {
     public sealed class Tasks
     {
-        public BashExecution Step() => NewBashExecution("echo step");
+        public void Step(PregelUnit _, PregelNodeContext context, CancellationToken token) { }
     }
 }

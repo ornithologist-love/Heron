@@ -76,7 +76,7 @@ internal sealed class PregelRunEventStream(IPregelRunObserver? observer, string 
                 ExecutionId = _executionId, WorkingDirectory = workingDirectory,
                 NodeTitle = value.NodeTitle ?? (value.NodeId is { } id && _graph.Nodes.TryGetValue(id, out var node)
                     ? node.Metadata?.Title ?? _graph.Stages.FirstOrDefault(stage => stage.EntryNode == id)?.Title
-                    : value.NodeId == _graph.Recovery?.Id ? _graph.Recovery?.Metadata.Title : null) };
+                    : null) };
             // Observability must not change node success, trigger retries, or hide a created process.
             try { observer?.OnEvent(value); }
             catch (Exception exception) { Trace.TraceWarning("Pregel observer failed: {0}", exception); }

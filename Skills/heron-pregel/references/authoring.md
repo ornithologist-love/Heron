@@ -4,7 +4,7 @@
 
 These namespaces are imported automatically: `System`, `System.IO`, `System.Linq`, `System.Threading`, `System.Threading.Tasks`, `System.Diagnostics`, `System.ComponentModel`, `Heron.Pregel`, `Heron.Pregel.Tooling` and `Heron.Pregel.Automation`. `ScriptDirectory` is available, and `#load` resolves relative to the current file. For JSON attributes add `#r "System.Text.Json"` and `using System.Text.Json.Serialization;`.
 
-An entry script returns a compiled `PregelGraph`, `PregelGraph<TInput>`, `PregelGraph<TInput, TOutput>`, or an automation template. It never returns a `Task`, a run result or an uncompiled builder, and it never runs the graph itself.
+An entry script returns a compiled `PregelGraph<TInput, TOutput>` or an automation template. Start with `Pregel.Define<TInput>(id)` or use `Pregel.Define(id)` for a graph without input. The host executes the graph after loading the script.
 
 A helper file starts with `// heron-pregel-script: support` and is not listed as an entry. An entry may declare a title:
 
@@ -36,10 +36,10 @@ Each item in `with` declares exactly one parameter with its default, plus option
 
 ## Stages and nodes
 
-Use named methods with the typed DSL. The base node signature is `void Method(TInput, PregelNodeContext, CancellationToken)`. A node may return `TResult`, `Task` or `Task<TResult>`. Keep all three parameters even when one is unused, because the DSL overloads bind on them.
+Use named methods with the typed DSL. A `Then` node accepts the current value, `PregelNodeContext`, and `CancellationToken`. Return `void` or `Task` to keep the current value, or `TResult` / `Task<TResult>` to pass a result downstream.
 
 ```csharp
-var flow = Pregel.Define<MyInput>("MyFlow", "1");
+var flow = Pregel.Define<MyInput>("MyFlow");
 return flow
     .Stage("reuse", "Reuse", s => s.Then(Reuse), when: input => input.UseLocal, skipReason: "Downloading instead")
     .Stage("download", "Download", s => s.Then(Download), when: input => !input.UseLocal, skipReason: "Reusing local copy")
@@ -47,36 +47,42 @@ return flow
     .Compile();
 ```
 
-A stage's condition is checked once on entry; when false its nodes are skipped and the graph continues. Use `.When(predicate, "reason")` for a single optional node.
+A stage's condition is checked once on entry. A conditional stage must end with its input type, and skipping it preserves the incoming value. Use `.When(predicate, "reason")` on a node that keeps the current type. Use `ReturnIf` after a node that produces the graph's final type to finish early based on that value.
 
-A node's return value feeds the next node, or bind explicitly with a selector. For shared data use `flow.State<TState>("state", initial)`. State must be serializable: records and value types, never `Process`, `Stream` or delegates. For a process, keep its ID and start time.
+Carry the data downstream nodes need in the current value. Use a serializable record to group fields, and return a new value when those fields change. For a process, keep its ID and start time.
 
-Use `.Parallel(a => a.Then(A), b => b.Then(B))` for independent branches, writing to separate state slots. Never draw dependent operations as parallel. A `When` at the start of a branch gates the whole branch. A `When` after a `Then` gates only that node:
+## Parallel branches and collections
+
+Use `.Parallel(a => a.Then(A), b => b.Then(B))` for independent fixed branches. Each branch ends with its input type. After the join, the next node receives the value from before the fork. A `When` at the start of a branch gates the whole branch. A `When` after a `Then` gates only that node.
 
 ```csharp
 stage.Parallel(
-    node => node.When(i => i.InstallNode, "Node.js not selected")
-        .Then(DetectNode)
-        .Then(InstallNode).When(i => !_probes["Node"].Ready, "Node.js already installed")
-        .Then(VerifyNode),
-    git => git.When(i => i.InstallGit, "Git not selected")
-        .Then(DetectGit).Then(InstallGit).Then(VerifyGit));
+    cache => cache.When(input => input.CheckCache, "Cache check disabled")
+        .Then(CheckCache).Then(LogCache),
+    output => output.Then(CheckOutput)
+        .Then(LogOutput).When(input => input.Verbose, "Verbose logging disabled"));
 ```
 
-When the branches come from data, run one branch per item. `Parallel` starts them together and `ForEach` runs them one after another. Each item is its own child run:
+When branches come from data, use `ForEach` to run one branch per item and keep the current value. Use `Map` when the next node needs the results. Both run sequentially by default and accept `mode: PregelMutationMode.Parallel`.
 
 ```csharp
-stage.Parallel("reports", run => run.Units.Where(unit => unit.Tier == "epic"),
-    key: unit => $"{unit.Date}/{unit.Scene}/{unit.Tier}",
-    unit => unit.Graph("report", reportGraph).SkipIf(report => report.SkipReason));
+return Pregel.Define<Batch>("MeasureBatch")
+    .Map("measure", batch => batch.Items.Where(item => item.Enabled),
+        key: item => item.Id,
+        body: item => item.Then(Measure),
+        mode: PregelMutationMode.Parallel)
+    .Then(Total)
+    .Compile();
+
+int Total(PregelMapResult<Batch, int> mapped, PregelNodeContext context, CancellationToken token) =>
+    mapped.State.BaseTotal + mapped.Items.Sum();
 ```
 
-- The `items` lambda picks one collection with at most one `Where`. For grouping, building new objects or reading state, pass a named method instead of the lambda, or compute the list in an upstream node. It must be pure: no IO, clock or randomness.
-- `key` is the stable business identity of an item and is used after a restart. Never use an index or a GUID. `title:` and `target:` are optional.
-- Filter with `Where` to leave an item out entirely. Start the branch with `When` to show it as skipped.
-- `SkipIf` directly follows a `Graph` call and marks it skipped when it returns a reason.
+- `Measure` receives one item and returns an `int`. `Total` receives the incoming batch in `State` and its branch results in `Items`, ordered by selection.
+- Use a stable `key` for each item so its child run can resume. Use `Where` to omit an item and a branch-opening `When` to record it as skipped.
+- Keep selection pure. Move grouping or building objects into a named selector or an upstream node.
 
-Call a compiled graph with `.Graph("child", childGraph)`. The current value must match the called graph's input type. If it needs conversion, do that in a named `Then` node before the call. The engine records the child run and passes its result to the next node.
+Call a compiled graph with `.Graph("child", childGraph)`. Its input type must match the current value. Use a named `Then` for any conversion before the call. `SkipIf` can follow the call and mark the child as skipped based on its result, which is still passed downstream.
 
 ## Human review
 
@@ -91,7 +97,7 @@ if (!context.HasResumeValue)
 var answer = context.ResumeValue<string>();
 ```
 
-The run reaches `AwaitingReview` and the process may exit. See `examples/review`.
+The run reaches `AwaitingReview` and the process may exit. The Heron repository includes a complete example at `Examples/Pregel/review/Review.csx`.
 
 ## Locks
 
@@ -125,8 +131,8 @@ Use `ArgumentList` rather than building a shell string. A non-zero exit fails th
 .Finally(s => s.Then(Stop).Then(Archive), TimeSpan.FromMinutes(5))
 ```
 
-Success, failure, cancellation and early return all enter `Finally`; a human interrupt waits first. Cleanup must tolerate running twice, because external effects and checkpoints are not one atomic transaction. Only independent cleanup nodes may use `ContinueOnError`.
+Once the body has started, success, failure, cancellation and early return all enter `Finally`. A pending review pauses the run before cleanup. Cleanup receives a `PregelOutcome` with the original input and the body status. Check `HasValue` before using the committed final value. Cleanup must tolerate running twice because external effects and checkpoints are separate operations. Only independent cleanup nodes may use `ContinueOnError`.
 
 ## Templates
 
-A plain graph already gets a form and run history. Add `AutomationGraphTemplate<TInput>` only for dynamic choices, validation, parameter previews or result summaries. Override `CreateGraph`, and as needed `Validate`, `Complete`, `ListFieldChoicesAsync`, `PrepareGraphInput` and `RenderParameters`. The base class already handles steps, durable runs, interrupts and finalization, so do not create a `PregelEngine` or poll records yourself.
+A plain graph already gets a form and run history. Add a template for dynamic choices, validation, parameter previews or result summaries. Override `CreateGraph` to return the compiled graph. Use `AutomationGraphTemplate<TInput, TOutput>` and override `Complete` to summarize a typed result. Use `AutomationGraphTemplate<TInput>` and override `SuccessSummary` when the graph returns the input type and the host should only report a summary.

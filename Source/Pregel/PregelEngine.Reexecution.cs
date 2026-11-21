@@ -114,7 +114,7 @@ public sealed partial class PregelEngine
             else point = body[^1];
             // Finally and recovery may have disposed resources referenced by frozen channel state.
             // Only restarting at the graph entry is generally sound without an explicit resource restoration contract.
-            if ((graph.Definition.Finally != null || graph.Recovery != null)
+            if (graph.Definition.Finally != null
                 && point.Superstep != 0)
                 throw new PregelException("reexecution_resources_released", "此图已执行收尾，无法保证原资源仍有效。请从图入口重新运行。");
             var expanded = PregelMutationGraph.Restore(graph, point);

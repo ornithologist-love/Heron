@@ -36,6 +36,8 @@ public sealed record PregelRunOptions(
     IPregelRunObserver? Observer = null,
     CancellationToken FinalizationCancellationToken = default)
 {
+    /// <summary>The engine used when preparing or running a compiled typed graph.</summary>
+    public PregelEngine? Engine { get; init; }
     public int MaxMutationInstances { get; init; } = 10_000;
     public string ExecutionMachine { get; init; } = "";
     public IPregelSubgraphExecutor? SubgraphExecutor { get; init; }
@@ -72,7 +74,6 @@ public sealed record PregelRunResult(
 
 public sealed partial class PregelEngine
 {
-    private static readonly TimeSpan RecoveryTimeout = TimeSpan.FromSeconds(120);
     private readonly IPregelCheckpointStore _store;
     private readonly PregelPlanner _planner = new();
     private readonly TimeProvider _timeProvider;
@@ -273,7 +274,7 @@ public sealed partial class PregelEngine
             throw new PregelException("finalization_still_running", "收尾代码尚未响应停止；原资源仍被保留，不能并发恢复。");
         using var finalizationTimeout = checkpoint.Finalization is null ? null
             : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, options.FinalizationCancellationToken);
-        finalizationTimeout?.CancelAfter(graph.Definition.Finally?.Timeout ?? RecoveryTimeout);
+        finalizationTimeout?.CancelAfter(graph.Definition.Finally!.Timeout);
         var parent = PregelResourceScope.Current;
         var coordinator = options.ResourceCoordinator ?? PregelLocalResourceCoordinator.ForDirectory(options.ResourceLockDirectory);
         IPregelResourceLease? lease = null;
@@ -323,7 +324,7 @@ public sealed partial class PregelEngine
                 }
                 events.OnEvent(new(checkpoint.RunId, "run.finished", result.Status.ToString(), Error: result.Error));
             }
-            catch (PregelException ex) when (checkpoint.Finalization is null && graph.Recovery is null
+            catch (PregelException ex) when (checkpoint.Finalization is null
                 && (ex.Code is "mutex_limit_conflict" or "mutex_limit_invalid"))
             {
                 var latest = await _store.LoadLatestAsync(checkpoint.RunId, CancellationToken.None).ConfigureAwait(false) ?? checkpoint;
@@ -506,10 +507,9 @@ public sealed partial class PregelEngine
             graph = PregelMutationGraph.Restore(graph, result.Checkpoint);
             events.OnEvent(new(checkpoint.RunId, "run.finalizing", "正在收尾"));
             using var budget = CancellationTokenSource.CreateLinkedTokenSource(finalizationToken, options.FinalizationCancellationToken);
-            if (finalizationToken == CancellationToken.None) budget.CancelAfter(graph.Definition.Finally?.Timeout ?? RecoveryTimeout);
-            result = graph.Definition.Finally == null
-                ? await CompleteFinalizationAsync(graph, result.Checkpoint, events, budget.Token).ConfigureAwait(false)
-                : await RunFinallyAsync(graph, result.Checkpoint, options with { Observer = events }, budget.Token).ConfigureAwait(false);
+            if (finalizationToken == CancellationToken.None) budget.CancelAfter(graph.Definition.Finally!.Timeout);
+            result = await RunFinallyAsync(graph, result.Checkpoint, options with { Observer = events }, budget.Token)
+                .ConfigureAwait(false);
             if (result.Checkpoint.Finalization != null && result.Error?.Code == "cancelled")
             {
                 var cancelled = options.FinalizationCancellationToken.IsCancellationRequested
@@ -875,7 +875,7 @@ public sealed partial class PregelEngine
         CancellationToken cancellationToken)
     {
         var observer = options.Observer;
-        var node = graph.Nodes[initialInvocation.NodeId];
+        var retryPolicy = graph.Definition.Nodes[initialInvocation.NodeId].RetryPolicy;
         var invocation = initialInvocation;
         while (true)
         {
@@ -895,8 +895,8 @@ public sealed partial class PregelEngine
                 Data: outcome is PregelInvocationOutcome.Skipped skipped
                     ? System.Text.Json.JsonSerializer.SerializeToElement(new { skipped.Reason }) : null));
             var shouldRetry = outcome is PregelInvocationOutcome.Failed failed
-                && node.RetryPolicy.ShouldRetry(failed.Error, invocation.AttemptNumber);
-            var delay = shouldRetry ? RetryDelay(node.RetryPolicy, invocation.AttemptNumber) : TimeSpan.Zero;
+                && retryPolicy.ShouldRetry(failed.Error, invocation.AttemptNumber);
+            var delay = shouldRetry ? RetryDelay(retryPolicy, invocation.AttemptNumber) : TimeSpan.Zero;
             var retryNotBefore = shouldRetry && delay > TimeSpan.Zero
                 ? _timeProvider.GetUtcNow() + delay
                 : (DateTimeOffset?)null;
@@ -1281,62 +1281,7 @@ public sealed partial class PregelEngine
             pendingFinally = await CommitLifecycleProgressAsync(checkpoint, pendingFinally, "finally-pending").ConfigureAwait(false);
             return new(pendingFinally.Status, pendingFinally.RunId, pendingFinally.CheckpointId, pendingFinally, error);
         }
-        if (graph.Recovery is null || checkpoint.ExecutionStarted == false
-            || status is not (PregelRunStatus.Failed or PregelRunStatus.Cancelled))
-            return await CommitTerminalAsync(checkpoint, status, error, cancellationToken).ConfigureAwait(false);
-
-        var pending = checkpoint with
-        {
-            Status = PregelRunStatus.Running,
-            Error = error,
-            Finalization = new PregelRunFinalization(status, error),
-        };
-        pending = await CommitLifecycleProgressAsync(checkpoint, pending, "recovery-pending").ConfigureAwait(false);
-        return new PregelRunResult(pending.Status, pending.RunId, pending.CheckpointId, pending, error);
-    }
-
-    private async ValueTask<PregelRunResult> CompleteFinalizationAsync(
-        CompiledPregelGraph graph, PregelCheckpoint checkpoint, PregelRunEventStream events,
-        CancellationToken finalizationToken)
-    {
-        var finalization = checkpoint.Finalization!;
-        if (!finalization.RecoveryCompleted)
-        {
-            var recovery = graph.Recovery
-                ?? throw new PregelException("recovery_missing", "Pending run finalization requires the graph's recovery handler.");
-            var id = recovery.Definition.Id;
-            var invocation = new PregelInvocation(
-                new PregelInvocationId(PregelHash.Sha256(checkpoint.RunId.Value, id.Value, "recovery")),
-                new PregelAttemptId(Guid.NewGuid().ToString("N")), 1, id, PregelInvocationKind.Pull, [], [],
-                new PregelEncodedValue("system:unit:v1", []));
-            var result = new PregelRunResult(finalization.Status, checkpoint.RunId, checkpoint.CheckpointId,
-                checkpoint, finalization.Error);
-            var context = new PregelNodeContext(graph, checkpoint, invocation, events, isRecovery: true);
-            events.OnEvent(new(checkpoint.RunId, "node.started", id.Value, id));
-            try
-            {
-                using var cleanup = CancellationTokenSource.CreateLinkedTokenSource(finalizationToken);
-                cleanup.CancelAfter(RecoveryTimeout);
-                cleanup.Token.ThrowIfCancellationRequested();
-                await recovery.Execute(graph, result, context, cleanup.Token).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                var error = new PregelError("recovery_failed", ex.Message,
-                    new Dictionary<string, string> { ["exception_type"] = ex.GetType().FullName ?? ex.GetType().Name });
-                events.OnEvent(new(checkpoint.RunId, "node.finished", nameof(PregelInvocationOutcome.Failed), id, Error: error));
-                await CommitLifecycleProgressAsync(checkpoint,
-                    checkpoint with { Finalization = finalization with { RecoveryError = error } }, "recovery-failed").ConfigureAwait(false);
-                // No terminal result or run.finished: Resume must retry cleanup, never the execution.
-                throw new PregelException(error.Code, error.Message, ex);
-            }
-            events.OnEvent(new(checkpoint.RunId, "node.finished", nameof(PregelInvocationOutcome.Succeeded), id));
-            checkpoint = await CommitLifecycleProgressAsync(checkpoint,
-                checkpoint with { Finalization = finalization with { RecoveryCompleted = true, RecoveryError = null } },
-                "recovery-completed").ConfigureAwait(false);
-        }
-        return await CommitTerminalAsync(checkpoint, finalization.Status, finalization.Error, CancellationToken.None)
-            .ConfigureAwait(false);
+        return await CommitTerminalAsync(checkpoint, status, error, cancellationToken).ConfigureAwait(false);
     }
 
     private async ValueTask<PregelCheckpoint> CommitLifecycleProgressAsync(

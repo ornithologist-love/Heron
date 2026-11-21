@@ -5,7 +5,7 @@ description: Write, validate, run and resume Heron.Pregel graph scripts (.csx), 
 
 # Heron.Pregel
 
-Heron.Pregel runs durable graphs written as C# scripts. Every step is checkpointed, so a failed or paused run continues from where it stopped instead of starting over.
+Heron.Pregel runs durable graphs written as C# scripts. Its checkpoints let a paused run continue from the saved position.
 
 ## The objects
 
@@ -30,5 +30,5 @@ A written file is not a saved task, a saved task has not run, and a schedule onl
 
 - Keep the script's top level free of side effects. `describe`, `validate` and `apply` all execute it.
 - Put external work in nodes, and call existing command line tools rather than porting them.
-- Change the graph revision when you change semantics, conditions, locks or stage grouping. Never alter a fingerprint or node ID to reuse an old checkpoint.
+- Script versions are content hashes. To run updated code, start a new run. Resume a paused run against its saved graph.
 - Only say a thing happened if you saw it happen: validation is not a successful run, and a saved schedule is not a fired trigger.

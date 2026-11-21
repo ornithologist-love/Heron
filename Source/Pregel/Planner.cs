@@ -91,7 +91,7 @@ internal sealed class PregelPlanner
     private static bool ShouldReplay(CompiledPregelGraph graph, PregelPendingOutcome pending) => pending.Outcome switch
     {
         PregelInvocationOutcome.Succeeded or PregelInvocationOutcome.Skipped => true,
-        PregelInvocationOutcome.Failed failed => !graph.Nodes[pending.Invocation.NodeId]
+        PregelInvocationOutcome.Failed failed => !graph.Definition.Nodes[pending.Invocation.NodeId]
             .RetryPolicy.ShouldRetry(failed.Error, pending.Invocation.AttemptNumber),
         _ => false,
     };

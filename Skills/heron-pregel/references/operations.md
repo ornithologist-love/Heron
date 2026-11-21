@@ -15,6 +15,7 @@ heron-pregel status --task <taskId> --run <runId>
 heron-pregel stop --task <taskId> --run <runId>
 heron-pregel serve
 heron-pregel api --output api.md
+heron-pregel skill --output ./skills/heron-pregel
 ```
 
 Exit codes: `0` succeeded, `2` usage error, `3` failed, `4` paused for review, `130` cancelled.
@@ -45,5 +46,5 @@ Triggers are saved with the task, or declared in `Input.json` under `triggers`. 
 
 1. `heron-pregel status` gives the failed step, summary and `evidence` directories.
 2. `run.log` and `events.jsonl` in the evidence directory hold the node output.
-3. Fix the cause and run again. Graph changes with new semantics need a new revision; old checkpoints will not resume against a different fingerprint.
+3. Fix the cause and start a new run. Resume requires the graph fingerprint saved in the checkpoint.
 4. Check external side effects before repeating a run that partly completed.

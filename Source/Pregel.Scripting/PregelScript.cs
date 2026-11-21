@@ -33,7 +33,7 @@ public static class PregelScript
         var source = TransformSource(await File.ReadAllTextAsync(fullPath, cancellationToken).ConfigureAwait(false));
         var options = ScriptOptions.Default
             .WithFilePath(fullPath)
-            .AddReferences(typeof(PregelGraph).Assembly, typeof(ProcessExecution).Assembly,
+            .AddReferences(typeof(Pregel).Assembly, typeof(ProcessExecution).Assembly,
                 typeof(PregelScriptGlobals).Assembly, typeof(ProcessStartInfo).Assembly,
                 typeof(System.ComponentModel.DisplayNameAttribute).Assembly)
             .AddImports("System", "System.IO", "System.Linq", "System.Collections.Generic",
@@ -49,7 +49,7 @@ public static class PregelScript
         var graph = state.ReturnValue;
         if (graph != null && DynamicPregelGraph.IsGraphType(graph.GetType()))
             return DynamicPregelGraph.Adapt(graph);
-        throw new ArgumentException($"{fullPath}: CSX 必须 return 一个 Compile() 后的 Pregel Graph。");
+        throw new ArgumentException($"{fullPath}: CSX 必须返回 Compile() 生成的 PregelGraph<TInput, TOutput>。");
     }
 }
 

@@ -41,11 +41,12 @@ public abstract class AutomationGraphTemplateBase<TInput> : AutomationTemplate<T
     private protected abstract DynamicPregelGraph AdaptGraph();
     private protected abstract CompiledPregelGraph CompileGraph();
     private protected abstract AutomationRunResult CompleteRun(TInput input, object? output);
+    private protected virtual bool WriteResultArtifact => true;
 
     void IAutomationGraphRuntimeConsumer.ConfigureGraphRuntime(string id, string path, string stateRoot) =>
         _runtime = () => new AutomationGraphScript(id, path, stateRoot, AdaptGraph(),
             task => PrepareGraphInput(task, BindInput(task)), (task, output) => CompleteRun(BindInput(task), output),
-            FailureSummary);
+            FailureSummary) { WriteResultArtifact = WriteResultArtifact };
 
     private AutomationGraphScript Runtime => _runtime?.Invoke()
         ?? throw new InvalidOperationException("Graph 模板须由自动化宿主注册后执行");
@@ -71,9 +72,10 @@ public abstract class AutomationGraphTemplateBase<TInput> : AutomationTemplate<T
 /// <summary>A template whose graph is driven by its input only.</summary>
 public abstract class AutomationGraphTemplate<TInput> : AutomationGraphTemplateBase<TInput> where TInput : class, new()
 {
-    protected abstract PregelGraph<TInput> CreateGraph();
+    protected abstract PregelGraph<TInput, TInput> CreateGraph();
     protected virtual string SuccessSummary(TInput input) => "流程执行完成";
 
+    private protected sealed override bool WriteResultArtifact => false;
     private protected sealed override DynamicPregelGraph AdaptGraph() => DynamicPregelGraph.Adapt(CreateGraph());
     private protected sealed override CompiledPregelGraph CompileGraph() => CreateGraph().Compiled;
     private protected sealed override AutomationRunResult CompleteRun(TInput input, object? output) =>

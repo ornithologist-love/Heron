@@ -4,59 +4,57 @@ namespace Heron.Pregel.Tests;
 public sealed class DslEntryArgumentAndEndTests
 {
     [Fact]
-    public async Task EntryArgument_IsDeliveredInOrderThroughTheChain()
+    public async Task EntryInput_IsDeliveredInOrderThroughTheChain()
     {
-        var tasks = new DslTasks();
         var observed = new List<string>();
+        var tasks = new DslTasks(observed);
         var graph = Pregel
-            .Define("entry-argument")
-            .StartExecution(tasks.First, "A", tasks.Executor(observed))
-            .ThenExecution(tasks.Second, "B")
+            .Define<string>("entry-input")
+            .Then(tasks.First)
+            .Then(tasks.Second)
             .Compile();
 
-        var result = await new PregelEngine().StartAsync(graph);
+        var result = await graph.RunAsync("A");
 
         result.Status.Should().Be(PregelRunStatus.Completed);
-        observed.Should().Equal("A", "B");
+        observed.Should().Equal("A", "A");
     }
 
     [Fact]
-    public async Task FlowEnd_InMiddleNode_StopsTheChainAndCompletes()
+    public async Task ContextEnd_InMiddleNode_StopsTheChainAndCompletes()
     {
-        var tasks = new DslTasks();
         var observed = new List<string>();
+        var tasks = new DslTasks(observed, endAtSecond: true);
         var graph = Pregel
-            .Define("flow-end-middle")
-            .StartExecution(tasks.First, "A", tasks.FlowExecutor(observed, endAt: "B"))
-            .ThenExecution(tasks.Second, "B")
-            .ThenExecution(tasks.Third, "C")
+            .Define<string>("flow-end-middle")
+            .Then(tasks.First)
+            .Then(tasks.Second)
+            .Then(tasks.Third)
             .Compile();
 
-        var result = await new PregelEngine().StartAsync(graph);
+        var result = await graph.RunAsync("A");
 
         result.Status.Should().Be(PregelRunStatus.Completed);
         result.Error.Should().BeNull();
-        observed.Should().Equal("A", "B");
+        observed.Should().Equal("A", "A");
     }
 
     [Fact]
     public async Task Variable_IsSuppliedPerRun_AndReadByEntryAndLaterNodes()
     {
-        var tasks = new DslTasks();
         var observed = new List<string>();
-        var def = Pregel.Define("variable-read");
-        var path = def.Variable<string>("path");
-        var graph = def
-            .StartExecution(tasks.First, path, tasks.Executor(observed))
-            .ThenExecution(tasks.Second, path)
-            .ThenExecution(tasks.Third, "C")
-            .Compile();
+        var builder = new PregelGraphBuilder("variable-read");
+        var path = builder.Variable<string>("path");
+        var first = builder.Node("first", (context, _) => { observed.Add(context.Read(path)); return ValueTask.CompletedTask; });
+        var second = builder.Node("second", (context, _) => { observed.Add(context.Read(path)); return ValueTask.CompletedTask; });
+        var third = builder.Node("third", "C", (arg, _, _) => { observed.Add(arg); return ValueTask.CompletedTask; });
+        var graph = builder.SetEntry(first).AddEdge(first, second).AddEdge(second, third).Compile();
 
-        var first = await new PregelEngine().StartAsync(graph, new PregelVariables().Set(path, "P1"));
-        var second = await new PregelEngine().StartAsync(graph, new PregelVariables().Set(path, "P2"));
+        var firstRun = await new PregelEngine().StartAsync(graph, new PregelVariables().Set(path, "P1"));
+        var secondRun = await new PregelEngine().StartAsync(graph, new PregelVariables().Set(path, "P2"));
 
-        first.Status.Should().Be(PregelRunStatus.Completed);
-        second.Status.Should().Be(PregelRunStatus.Completed);
+        firstRun.Status.Should().Be(PregelRunStatus.Completed);
+        secondRun.Status.Should().Be(PregelRunStatus.Completed);
         observed.Should().Equal("P1", "P1", "C", "P2", "P2", "C");
     }
 
@@ -67,19 +65,17 @@ public sealed class DslEntryArgumentAndEndTests
         Directory.CreateDirectory(directory);
         try
         {
-            var tasks = new DslTasks();
             var observed = new List<string>();
-            var def = Pregel.Define("variable-resume");
-            var path = def.Variable<string>("path");
-            var graph = def
-                .StartExecution(tasks.First, path, tasks.Executor(observed))
-                .ThenExecution(tasks.Second, path)
-                .Compile();
+            var builder = new PregelGraphBuilder("variable-resume");
+            var path = builder.Variable<string>("path");
+            var first = builder.Node("first", (context, _) => { observed.Add(context.Read(path)); return ValueTask.CompletedTask; });
+            var second = builder.Node("second", (context, _) => { observed.Add(context.Read(path)); return ValueTask.CompletedTask; });
+            var graph = builder.SetEntry(first).AddEdge(first, second).Compile();
             var runId = new PregelRunId("variable-resume-run");
 
-            var first = async () => await new PregelEngine(new FilePregelCheckpointStore(directory, new ThrowOnceAfterOutcome()))
+            var firstRun = async () => await new PregelEngine(new FilePregelCheckpointStore(directory, new ThrowOnceAfterOutcome()))
                 .StartAsync(graph, runId, new PregelVariables().Set(path, "Kept"));
-            await first.Should().ThrowAsync<PregelException>()
+            await firstRun.Should().ThrowAsync<PregelException>()
                 .Where(exception => exception.Code == "simulated_crash");
 
             var resumed = await new PregelEngine(new FilePregelCheckpointStore(directory)).ResumeAsync(graph, runId);
@@ -109,41 +105,16 @@ public sealed class DslEntryArgumentAndEndTests
         }
     }
 
-    private sealed class DslTasks
+    private sealed class DslTasks(List<string> observed, bool endAtSecond = false)
     {
-        public Func<string, CancellationToken, ValueTask<PregelFlow>> ReturnFlow(
-            PregelFlow flow,
-            ICollection<string>? observed = null) =>
-            (value, _) =>
-            {
-                observed?.Add(value);
-                return ValueTask.FromResult(flow);
-            };
+        public void First(string value, PregelNodeContext context, CancellationToken token) => observed.Add(value);
 
-        public string Zero() => "0";
+        public void Second(string value, PregelNodeContext context, CancellationToken token)
+        {
+            observed.Add(value);
+            if (endAtSecond) context.End();
+        }
 
-        public string First(string value) => value;
-
-        public string Second(string value) => value;
-
-        public string Third(string value) => value;
-
-        public Func<string, CancellationToken, ValueTask> Executor(ICollection<string> observed) =>
-            (value, cancellationToken) =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                observed.Add(value);
-                return ValueTask.CompletedTask;
-            };
-
-        public Func<string, CancellationToken, ValueTask<PregelFlow>> FlowExecutor(
-            ICollection<string> observed,
-            string? endAt = null) =>
-            (value, cancellationToken) =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                observed.Add(value);
-                return ValueTask.FromResult(value == endAt ? PregelFlow.End : PregelFlow.Continue);
-            };
+        public void Third(string value, PregelNodeContext context, CancellationToken token) => observed.Add(value);
     }
 }

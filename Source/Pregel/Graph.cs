@@ -52,14 +52,12 @@ public sealed record PregelNodeDefinition(
 
 public sealed record PregelGraphDefinition(
     string GraphId,
-    string Revision,
     IReadOnlyDictionary<NodeId, PregelNodeDefinition> Nodes,
     IReadOnlyDictionary<ChannelId, PregelChannelDefinition> Channels,
     IReadOnlyList<PregelEdge> Edges,
     NodeId EntryNode,
     string Fingerprint)
 {
-    public PregelRecoveryDefinition? Recovery { get; init; }
     public PregelFinallyDefinition? Finally { get; init; }
     public IReadOnlyList<string> MutexRules { get; init; } = [];
     public IReadOnlyDictionary<string, int> MutexLimits { get; init; } = FrozenDictionary<string, int>.Empty;
@@ -146,16 +144,12 @@ public sealed class CompiledPregelGraph
         Variables = variables;
     }
 
-    internal PregelRecovery? Recovery { get; init; }
     internal CompiledPregelGraph? MutationBase { get; init; }
     internal IReadOnlyDictionary<string, PregelMutationRuntime> Mutations { get; init; } =
         FrozenDictionary<string, PregelMutationRuntime>.Empty;
     public PregelGraphDefinition Definition { get; }
-    // The original When DSL and its Continue/Skip routing implementation have identical topology.
-    internal string? ConditionCompatibilityFingerprint { get; init; }
     internal bool MatchesFingerprint(string fingerprint) =>
-        StringComparer.Ordinal.Equals(Definition.Fingerprint, fingerprint)
-        || ConditionCompatibilityFingerprint is { } legacy && StringComparer.Ordinal.Equals(legacy, fingerprint);
+        StringComparer.Ordinal.Equals(Definition.Fingerprint, fingerprint);
     internal IReadOnlyDictionary<NodeId, INodeRuntime> Nodes { get; }
     internal IReadOnlyDictionary<NodeId, PregelRouteRuntime> BeforeRoutes { get; init; } =
         FrozenDictionary<NodeId, PregelRouteRuntime>.Empty;
@@ -197,26 +191,12 @@ public sealed partial class PregelGraphBuilder
     internal void ContinueOnError(NodeId node) => _continueOnError.Add(node);
     internal void SetFinally(NodeId entry, IReadOnlyList<NodeId> nodes, TimeSpan timeout)
     {
-        if (Finally != null || Recovery != null) throw new InvalidOperationException("Only one Finally or legacy OnFailure can be declared.");
+        if (Finally != null) throw new InvalidOperationException("Only one Finally can be declared.");
         if (timeout <= TimeSpan.Zero || timeout > TimeSpan.FromDays(1)) throw new ArgumentOutOfRangeException(nameof(timeout));
         Finally = new(entry, nodes, timeout);
         var index = _stages.FindIndex(stage => stage.EntryNode == entry);
         _stages[index] = _stages[index] with { IsFinally = true };
     }
-    internal PregelRecovery? Recovery { get; private set; }
-
-    internal void ConfigureRecovery<TState>(PregelVariable<TState> state, Delegate task,
-        Func<TState?, PregelNodeContext, CancellationToken, Task> execute)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        ArgumentNullException.ThrowIfNull(task);
-        ArgumentNullException.ThrowIfNull(execute);
-        EnsureOwned(state.Channel.Runtime);
-        if (Recovery is not null || Finally is not null) throw new InvalidOperationException("Recovery or Finally is already declared.");
-        Recovery = new(new(new NodeId(PregelTaskIdentity.NodeId(task)), PregelNodeMetadata.FromTask(task)),
-            (graph, result, context, token) => execute(graph.Read(result, state), context, token));
-    }
-
     private PregelMutexRule[] _mutexRules = [];
 
     /// <summary>Projects graph-instance mutex rules from a graph class, property or factory method.</summary>
@@ -267,8 +247,8 @@ public sealed partial class PregelGraphBuilder
     }
 
     private readonly string _graphId;
-    private readonly string _revision;
     private readonly Dictionary<NodeId, INodeRuntime> _nodes = [];
+    private readonly Dictionary<NodeId, PregelRetryPolicy> _retryPolicies = [];
     private readonly Dictionary<ChannelId, IChannelRuntime> _channels = [];
     private readonly Dictionary<string, ChannelId> _variables = new(StringComparer.Ordinal);
     private readonly HashSet<PregelEdge> _edges = [];
@@ -276,10 +256,9 @@ public sealed partial class PregelGraphBuilder
     private readonly Dictionary<NodeId, HashSet<ChannelId>> _reads = [];
     private NodeId? _entryNode;
 
-    public PregelGraphBuilder(string graphId, string revision = "1")
+    public PregelGraphBuilder(string graphId)
     {
         _graphId = PregelId.Validate(graphId, nameof(graphId));
-        _revision = PregelId.Validate(revision, nameof(revision));
     }
 
     public NodeRef<PregelUnit> Node(
@@ -463,7 +442,6 @@ public sealed partial class PregelGraphBuilder
     public void When<TInput>(NodeRef<TInput> node, Func<PregelNodeContext, bool> predicate,
         string skipReason = "运行条件不满足") => ConfigureCondition(node.Runtime, predicate, skipReason);
 
-    private readonly HashSet<NodeId> _legacyConditionNodes = [];
     internal void ConfigureCondition(INodeRuntime node, Func<PregelNodeContext, bool> predicate, string skipReason)
     {
         EnsureOwned(node);
@@ -472,7 +450,13 @@ public sealed partial class PregelGraphBuilder
         ConfigureRoute(node, new(PregelRoutePhase.BeforeNode,
             context => predicate(context) ? PregelRoute.Continue : PregelRoute.Skip(skipReason),
             [PregelRoute.Continue, PregelRoute.Skip(skipReason)], "invalid_node_condition"));
-        _legacyConditionNodes.Add(node.Id);
+    }
+
+    internal void ConfigureRetry(NodeRef<PregelUnit> node, PregelRetryPolicy policy)
+    {
+        EnsureOwned(node.Runtime);
+        ArgumentNullException.ThrowIfNull(policy);
+        _retryPolicies[node.Id] = ValidateRetryPolicy(policy);
     }
 
     /// <summary>Records that <paramref name="node"/> reads <paramref name="variable"/>; this is part of the fingerprint.</summary>
@@ -534,7 +518,7 @@ public sealed partial class PregelGraphBuilder
                     _reads.TryGetValue(node.Id, out var reads)
                         ? reads.OrderBy(id => id.Value, StringComparer.Ordinal).ToArray()
                         : Array.Empty<ChannelId>(),
-                    node.RetryPolicy)
+                    _retryPolicies.GetValueOrDefault(node.Id, node.RetryPolicy))
                 {
                     Metadata = _metadata.GetValueOrDefault(node.Id),
                     SkipReason = _beforeRoutes.GetValueOrDefault(node.Id)?.Definition.Destinations
@@ -552,54 +536,37 @@ public sealed partial class PregelGraphBuilder
         var edges = _edges.OrderBy(edge => edge.From.Value, StringComparer.Ordinal).ThenBy(edge => edge.To.Value, StringComparer.Ordinal).ToArray();
         var mutexKeys = _mutexRules.Select(rule => rule.Key).ToArray();
         var mutexLimits = PregelMutexRules.Limits(_mutexRules);
-        string CompleteFingerprint(string fingerprint)
+        var fingerprint = Fingerprint(nodeDefinitions, channelDefinitions, channels, edges, entryNode);
+        if (Finally != null) fingerprint = PregelHash.Sha256(fingerprint, System.Text.Json.JsonSerializer.Serialize(Finally));
+        foreach (var id in _continueOnError.OrderBy(id => id.Value, StringComparer.Ordinal))
+            fingerprint = PregelHash.Sha256(fingerprint, "continue-on-error", id.Value);
+        if (mutexKeys.Length > 0) fingerprint = PregelHash.Sha256(fingerprint, System.Text.Json.JsonSerializer.Serialize(mutexKeys));
+        if (mutexLimits.Count > 0) fingerprint = PregelHash.Sha256(fingerprint,
+            System.Text.Json.JsonSerializer.Serialize(_mutexRules.Where(rule => rule.MaxConcurrency != 1).ToArray()));
+        foreach (var stage in _stages)
+            fingerprint = PregelHash.Sha256(fingerprint, stage.Id, stage.EntryNode.Value,
+                System.Text.Json.JsonSerializer.Serialize(stage.NodeIds), stage.SkipReason);
+        foreach (var mutation in _mutations.Values.OrderBy(x => x.Definition.Id, StringComparer.Ordinal))
         {
-            if (Recovery is { } recovery) fingerprint = PregelHash.Sha256(fingerprint, recovery.Definition.Id.Value);
-            if (Finally != null) fingerprint = PregelHash.Sha256(fingerprint, System.Text.Json.JsonSerializer.Serialize(Finally));
-            foreach (var id in _continueOnError.OrderBy(id => id.Value, StringComparer.Ordinal))
-                fingerprint = PregelHash.Sha256(fingerprint, "continue-on-error", id.Value);
-            if (mutexKeys.Length > 0) fingerprint = PregelHash.Sha256(fingerprint, System.Text.Json.JsonSerializer.Serialize(mutexKeys));
-            if (mutexLimits.Count > 0) fingerprint = PregelHash.Sha256(fingerprint,
-                System.Text.Json.JsonSerializer.Serialize(_mutexRules.Where(rule => rule.MaxConcurrency != 1).ToArray()));
-            foreach (var stage in _stages)
-                fingerprint = PregelHash.Sha256(fingerprint, stage.Id, stage.EntryNode.Value,
-                    System.Text.Json.JsonSerializer.Serialize(stage.NodeIds), stage.SkipReason);
-            foreach (var mutation in _mutations.Values.OrderBy(x => x.Definition.Id, StringComparer.Ordinal))
-            {
-                fingerprint = PregelHash.Sha256(fingerprint, "mutation:v1", mutation.Definition.Id,
-                    mutation.Definition.Mode.ToString(), mutation.Template.Definition.Fingerprint,
-                    mutation.Definition.InputCodecId, mutation.Definition.OutputCodecId);
-                if (mutation.Definition.HasResultSkipCondition)
-                    fingerprint = PregelHash.Sha256(fingerprint, "mutation:result-skip:v1");
-                if (mutation.Definition.HasItemSkipCondition)
-                    fingerprint = PregelHash.Sha256(fingerprint, "mutation:item-skip:v1");
-                if (mutation.Definition.IsSingleSubgraph)
-                    fingerprint = PregelHash.Sha256(fingerprint, "mutation:single-subgraph:v1");
-            }
-            return fingerprint;
-        }
-        var fingerprint = CompleteFingerprint(Fingerprint(nodeDefinitions, channelDefinitions, channels, edges, entryNode));
-        string? conditionCompatibilityFingerprint = null;
-        // Recompute the pre-routing hash only when every route came from the unchanged When API.
-        // Explicit routing, scopes and mutation templates retain strict revision matching.
-        if (_legacyConditionNodes.Count > 0 && _beforeRoutes.Count == _legacyConditionNodes.Count
-            && _afterRoutes.Count == 0 && _routeScopes.Count == 0 && _mutations.Count == 0)
-        {
-            var legacyNodes = nodeDefinitions.ToDictionary(pair => pair.Key,
-                pair => pair.Value with { Routes = [] });
-            conditionCompatibilityFingerprint = CompleteFingerprint(
-                Fingerprint(legacyNodes, channelDefinitions, channels, edges, entryNode));
+            fingerprint = PregelHash.Sha256(fingerprint, "mutation:v1", mutation.Definition.Id,
+                mutation.Definition.Mode.ToString(), mutation.Template.Definition.Fingerprint,
+                mutation.Definition.InputCodecId, mutation.Definition.OutputCodecId);
+            if (mutation.Definition.HasResultSkipCondition)
+                fingerprint = PregelHash.Sha256(fingerprint, "mutation:result-skip:v1");
+            if (mutation.Definition.HasItemSkipCondition)
+                fingerprint = PregelHash.Sha256(fingerprint, "mutation:item-skip:v1");
+            if (mutation.Definition.IsSingleSubgraph)
+                fingerprint = PregelHash.Sha256(fingerprint, "mutation:single-subgraph:v1");
         }
         var definition = new PregelGraphDefinition(
             _graphId,
-            _revision,
             nodeDefinitions.ToFrozenDictionary(),
             channelDefinitions.ToFrozenDictionary(),
             edges,
             entryNode,
             fingerprint)
         {
-            Recovery = Recovery?.Definition, Finally = Finally, MutexRules = Array.AsReadOnly(mutexKeys), MutexLimits = mutexLimits,
+            Finally = Finally, MutexRules = Array.AsReadOnly(mutexKeys), MutexLimits = mutexLimits,
             Stages = Array.AsReadOnly(_stages.ToArray()), Mutations = _mutations.Values.Select(x => x.Definition).ToArray()
         };
 
@@ -623,9 +590,8 @@ public sealed partial class PregelGraphBuilder
             startChannel,
             _variables.ToFrozenDictionary(pair => pair.Value, pair => pair.Key))
         {
-            Recovery = Recovery, StageConditions = _stageConditions.ToFrozenDictionary(), StageGuards = _stageGuards.ToFrozenDictionary(),
+            StageConditions = _stageConditions.ToFrozenDictionary(), StageGuards = _stageGuards.ToFrozenDictionary(),
             BarrierControls = BarrierControlNodes.ToFrozenSet(), Mutations = _mutations.ToFrozenDictionary(),
-            ConditionCompatibilityFingerprint = conditionCompatibilityFingerprint,
             BeforeRoutes = _beforeRoutes.ToFrozenDictionary(), AfterRoutes = _afterRoutes.ToFrozenDictionary(),
             RouteScopes = CompileRouteScopes()
         };
@@ -703,7 +669,7 @@ public sealed partial class PregelGraphBuilder
         IReadOnlyList<PregelEdge> edges,
         NodeId entryNode)
     {
-        var parts = new List<string> { _graphId, _revision, entryNode.Value };
+        var parts = new List<string> { _graphId, entryNode.Value };
         foreach (var node in nodes.Values.OrderBy(node => node.Id.Value, StringComparer.Ordinal))
         {
             parts.Add(string.Create(

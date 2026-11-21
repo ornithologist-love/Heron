@@ -8,23 +8,20 @@ public sealed class RouteDslContractTests
     {
         const int initialValue = 17;
         const string skipReason = "optional step disabled";
-        var definition = Pregel.Define("when-skip-contract");
-        var output = definition.Output("value", initialValue);
-        var nodes = new ConditionalNodes(output);
-        Action<PregelNodeContext> write = nodes.Write;
-        var graph = definition.Stage("optional", "Optional", stage => stage
-            .Then(write).When(_ => false, skipReason)
+        var nodes = new ConditionalNodes();
+        var graph = Pregel.Define<int>("when-skip-contract").Stage("optional", "Optional", stage => stage
+            .Then(nodes.Write).When(_ => false, skipReason)
             .Then(nodes.Observe)).Compile();
         var store = new InMemoryPregelCheckpointStore();
 
-        var result = await graph.RunAsync(new PregelEngine(store));
+        var result = await graph.Prepare(initialValue, new() { Engine = new PregelEngine(store) }).RunAsync();
         var history = await store.LoadHistoryAsync(result.RunId);
 
         result.Status.Should().Be(PregelRunStatus.Completed);
         nodes.BodyRan.Should().BeFalse();
         nodes.Observed.Should().Be(initialValue, "a skipped node must not publish output and must still trigger its successor");
         history.SelectMany(checkpoint => checkpoint.CommittedOutcomes)
-            .Where(outcome => outcome.Invocation.NodeId == Pregel.NodeId(write))
+            .Where(outcome => outcome.Invocation.NodeId == Pregel.NodeId(nodes.Write))
             .Select(outcome => outcome.Outcome).OfType<PregelInvocationOutcome.Skipped>()
             .Should().Contain(outcome => outcome.Reason == skipReason, "skipping must retain its declared reason");
     }
@@ -32,35 +29,12 @@ public sealed class RouteDslContractTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Choose_ExecutesOnlyTheSelectedBranch_AndThenJoins(bool chooseTrue)
-    {
-        var definition = Pregel.Define<bool>("choose-contract");
-        var state = definition.State("selection", !chooseTrue);
-        var nodes = new ChoiceNodes();
-        var graph = definition
-            .Stage("prepare", "Prepare", stage => stage.Then(nodes.StoreSelection, input => input, state))
-            .Choose("select", state, selected => selected,
-                yes => yes.Stage("yes", "Yes", stage => stage.Then(nodes.TrueBranch)),
-                no => no.Stage("no", "No", stage => stage.Then(nodes.FalseBranch)))
-            .Stage("join", "Join", stage => stage.Then(nodes.Join))
-            .Compile();
-
-        var result = await graph.RunAsync(chooseTrue);
-
-        result.Status.Should().Be(PregelRunStatus.Completed);
-        nodes.ExecutedBranches.Should().Equal(new[] { chooseTrue }, "Choose must execute exactly the branch selected from committed state");
-        nodes.Joined.Should().BeTrue("the selected branch must reach the common successor");
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task FastReturn_CommitsTheCurrentResult_AndOnlyStopsWhenItsPredicateMatches(bool stopEarly)
+    public async Task ReturnIf_CommitsTheCurrentResult_AndOnlyStopsWhenItsPredicateMatches(bool stopEarly)
     {
         var input = stopEarly ? 11 : -11;
         var nodes = new ResultNodes();
         var graph = Pregel.Define<int>("fast-return-contract")
-            .Stage("check", "Check", stage => stage.Then(nodes.Identity).FastReturn(value => value > 0))
+            .Stage("check", "Check", stage => stage.Then(nodes.Identity).ReturnIf(value => value > 0))
             .Stage("next", "Next", stage => stage.Then(nodes.Double))
             .Compile();
         var run = graph.Prepare(input);
@@ -68,7 +42,7 @@ public sealed class RouteDslContractTests
         var result = await run.RunAsync();
 
         result.Status.Should().Be(PregelRunStatus.Completed);
-        nodes.NextRan.Should().Be(!stopEarly, "FastReturn must suppress successors only when its predicate matches");
+        nodes.NextRan.Should().Be(!stopEarly, "ReturnIf must suppress successors only when its predicate matches");
         run.Read().Should().Be(stopEarly ? input : input + input, "the result must be committed even when the flow ends early");
     }
 
@@ -100,29 +74,18 @@ public sealed class RouteDslContractTests
         executed.Should().BeEmpty("an invalid route must fail before either successor executes");
     }
 
-    private sealed class ConditionalNodes(PregelVariable<int> output)
+    private sealed class ConditionalNodes
     {
         public bool BodyRan { get; private set; }
         public int? Observed { get; private set; }
 
-        public void Write(PregelNodeContext context)
+        public int Write(int value, PregelNodeContext context, CancellationToken token)
         {
             BodyRan = true;
-            context.Write(output, context.Read(output) + 1);
+            return value + 1;
         }
 
-        public void Observe(PregelNodeContext context) => Observed = context.Read(output);
-    }
-
-    private sealed class ChoiceNodes
-    {
-        public List<bool> ExecutedBranches { get; } = [];
-        public bool Joined { get; private set; }
-
-        public bool StoreSelection(bool input, PregelNodeContext context, CancellationToken token) => input;
-        public void TrueBranch(bool input, PregelNodeContext context, CancellationToken token) => ExecutedBranches.Add(true);
-        public void FalseBranch(bool input, PregelNodeContext context, CancellationToken token) => ExecutedBranches.Add(false);
-        public void Join(bool input, PregelNodeContext context, CancellationToken token) => Joined = true;
+        public void Observe(int value, PregelNodeContext context, CancellationToken token) => Observed = value;
     }
 
     private sealed class ResultNodes

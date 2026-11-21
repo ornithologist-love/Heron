@@ -67,8 +67,8 @@ public sealed class ProtocolBoundaryTests
 
     private static (CompiledPregelGraph Root, PregelSubgraphExecutionRequest Request) Invocation()
     {
-        var child = Graph.Define<MockInput>("mock-child", "1").Start(Transform).Compile();
-        var root = Graph.Define<MockInput>("mock-root", "1").Start(Pass)
+        var child = Graph.Define<MockInput>("mock-child").Then(Transform).Compile();
+        var root = Graph.Define<MockInput>("mock-root").Then(Pass)
             .Graph("branch", child, target: _ => "mock-machine").Compile().Compiled;
         var mutation = root.Definition.Mutations.Single();
         var codec = CheckpointCodecs.Json<MockInput>();

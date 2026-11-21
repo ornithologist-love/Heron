@@ -37,23 +37,22 @@ Pregel 的节点、通道和同步屏障让并发写入有确定的提交边界�
 关键方案：
 
 - 公开 API 用 C# 强类型（`ChannelRef<TState,TUpdate>`、`NodeRef<TInput>`、`ICheckpointCodec<T>`），不定义统一 JsonElement 值模型；类型错误编译期失败。Kernel 内用非公开 `IChannelRuntime`/`INodeRuntime` 类型擦除。
-- `Fingerprint` 只由规范化结构字段计算，不含显示文本/Delegate/输入/时间戳；Resume 强制匹配。仅使用原有 `When` 条件、无显式路由/路由作用域/Mutation 的图，还会重算条件改为 Continue/Skip 实现前的等价指纹，以恢复旧检查点；节点、通道、边、Finally、Mutex 和 revision 仍全部参与匹配，检查点不改写为新指纹。
+- `Fingerprint` 由规范化的编译图结构计算。Resume 要求检查点指纹与当前编译图一致。脚本内容哈希标识运行使用的源码快照，图指纹用于校验检查点。
 - Invocation identity：`PULL = Hash(RunId, Superstep, "pull", NodeId, sorted TriggerIds)`；`PUSH = Hash(RunId, Superstep, "push", SendIndex, TargetNodeId, ParentPath)`。
 - Planner 是纯函数：PULL 由 Channel 版本 > Node 已见版本产生，PUSH 由已提交 Send packet 产生；已有成功 Outcome 的 LogicalInvocation 进 replay 集合不重跑。
 - 文件 Store 用 append-only + commit manifest 协议（`runs/{run-id}/{run.json, checkpoints/, pending/, commits/}`），manifest 是提交完成的唯一事实。
 - 图变量（2026-09-24）：声明后每次 Run 由调用方提供值，存放在保留的 `__var:{name}` LastValue channel 随 Checkpoint 持久化；Fingerprint 只含声明不含 Run 值。缺变量报 `missing_graph_variable`，传未声明变量报 `unknown_graph_variable`。
 - 顺序阶段：GraphDefinition 保存 Stage 身份、成员和入口；入口将阶段条件的结果写入 checkpoint。执行器先检查阶段条件，再检查节点自己的条件，整段跳过仍产生各成员的 `Skipped` outcome 并沿原边推进。阶段不提供事务回滚或额外并发语义。
-- 节点流程选择统一为 Route：编译定义保存执行前/后的候选决策，绑定独立于节点主体；执行器校验选择结果并落为原有控制边写入或 End。When、Choose、FastReturn 只负责声明这套规则，不各自执行流程控制。候选目标在编译时封闭并参与指纹；结果路由只读取本 invocation 刚产出的结果，不放宽普通节点的 checkpoint 读取规则。已持久化 outcome 包含所选边的写入，恢复重放 outcome，不重复判断已完成的路由。
-- 高层具名 Route 将选择写入每次运行的 checkpoint，分支成员保存指向该选择的 scope。业务节点在执行前按外层到内层检查 scope，未选中的分支产生原生 Skipped outcome；屏障控制节点继续推进，汇合使用 NamedBarrier，避免跳过分支先到而提前推进。scope 与候选 key 参与指纹并随 mutation 运行图投影保留；Stage 的条件也覆盖隐藏的路由判断节点，使整段跳过时不执行 selector。复用现有节点、屏障和 outcome，不引入第二套分支状态记录。
+- 执行器用 Route 实现 `When` 和 `ReturnIf`。编译定义保存执行前后的候选决策，执行器校验选择结果并写入控制边或 End。候选目标在编译时确定并参与指纹。结果路由读取本 invocation 刚产出的结果。已持久化 outcome 包含所选边的写入，恢复时重放该 outcome。
 - ContinueOnError：普通节点与 Finally 均可显式允许失败后继续，重试策略先执行完，durable outcome 和事件仍保留 Failed。正文错误随 `Checkpoint.ContinuedErrors` 保存，恢复沿后续边推进；Finally 错误保存在 `Finalization.Errors`，仍需显式重试收尾。取消、中断、屏障/存储错误不受此选项豁免。
 
 ## Mutation：预编译规则与运行拓扑
 
 图编译时将规则注册到 `CompiledPregelGraph.Mutations`：规则 ID、串行或并行模式、入口、汇合点、输入输出 codec 和已编译子图。父图指纹包含这些结构字段、子图指纹及规则格式版本。
 
-集合分支（`Parallel`、`ForEach` 的 `id, items, key, branch` 写法）编译成同一种 mutation 规则：`items` 与 `key` 合成带 Key 的条目，分支 lambda 在构图时编成独立的模板图，图 ID 为父图 ID 加展开 ID，revision 随父图。模板只含一次从分支起点发起、使用默认目标与标题的 `Graph` 调用时，直接以被调用的图作模板。`SkipIf` 写入该调用的结果跳过规则，展平时一并带到展开规则上。固定分支的 `Parallel` 由同一图内的命名屏障汇合。
+集合分支（`ForEach` 和 `Map`）编译成同一种 mutation 规则：`items` 与 `key` 合成带 Key 的条目，分支 lambda 在构图时编成独立的模板图，图 ID 为父图 ID 加展开 ID。模板只含一次从分支起点发起、使用默认目标与标题的 `Graph` 调用时，直接以被调用的图作模板。`SkipIf` 写入该调用的结果跳过规则，展平时一并带到展开规则上。固定分支的 `Parallel` 由同一图内的命名屏障汇合。
 
-固定分支开头的 `When` 生成一个隐藏的判断节点，把结果写进本次运行的选择通道。分支内的其余节点使用具名 Route 的 scope，判断不通过时产生 `Skipped`，屏障到达节点照常推进。集合分支在展开时记录跳过原因，该实例直接以 `Skipped` 到达屏障，结果列表只收集实际执行的项。
+固定分支开头的 `When` 生成一个隐藏的判断节点，把结果写进本次运行的选择通道。分支成员在执行前按外层到内层检查已提交的选择，判断不通过时产生 `Skipped`，屏障到达节点照常推进。分支作用域参与图指纹，并随集合子图投影保留。集合分支在展开时记录跳过原因，该实例直接以 `Skipped` 到达屏障，结果列表只收集实际执行的项。
 
 展开入口从已提交上游状态读取带 Key 的集合，编码每份输入并产生 `Mutate` 命令。Pending Outcome 保存这份计划；屏障检查实例数量、Key 和来源，原子提交 `Checkpoint.Mutations`、`RunGraphRevision`、新增通道初值与首批调度包。提交成功才发布 `mutation.committed`。崩溃恢复从检查点重建相同实例和边，不重新选择条目；不兼容的计划格式或模板指纹明确拒绝恢复。
 
@@ -65,7 +64,7 @@ Pregel 的节点、通道和同步屏障让并发写入有确定的提交边界�
 
 `PregelMutationSnapshot` 序列化运行拓扑，`GetRunGraphAsync` 提供只读查询。Client 的拓扑投影和运行记录器消费快照并合并已有状态；业务模板不管理展开数量和实例身份。
 
-CSX 的 Roslyn 临时程序集名包含随机会话 ID。类型身份与默认 JSON codec 身份会移除这一临时部分（包括泛型参数中的部分），防止同一源码重新加载后图指纹漂移。节点方法签名使用同样的规范化。旧 CSX 检查点不强制迁移；行为变更仍由图 revision 区分。
+CSX 的 Roslyn 临时程序集名包含随机会话 ID。类型身份与默认 JSON codec 身份会移除这一临时部分（包括泛型参数中的部分），防止同一源码重新加载后图指纹漂移。节点方法签名使用同样的规范化。旧 CSX 检查点不强制迁移。
 
 ## 手动继续与从节点重新运行
 
@@ -77,11 +76,11 @@ MVP 的恢复边界是屏障：继续选择最后一个正文检查点；指定�
 
 持久化 mutation 逐层恢复：已成功的同批实例只读复用结果；失败或取消的子运行另建派生检查点；指定子节点时逐层回退其父调用屏障；后续串行实例重新开始。完整子树校验后才创建检查点，父运行最后发布；创建失败留下的子检查点不执行。新展开的子运行继承派生来源。共享原工作数据的派生运行通过来源资源锁串行准入。
 
-安全边界：待审核、尚未结束收尾的运行保留原处理入口；图含 Finally/Recovery 时，中途恢复因资源可能已被释放而拒绝，只允许从入口重新开始。循环节点涉及多轮时拒绝含糊的节点地址。普通委托自行启动的非原生子图不支持内部定位。检查点不克隆外部文件、进程或远端副作用；节点仍须遵守持久输入与幂等契约，缺失工作文件直接报错。Tooling 的归档节点在派生运行中使用新运行目录，保留原归档。
+安全边界：待审核、尚未结束收尾的运行保留原处理入口。包含 `Finally` 的终态运行只能从入口重新执行，因为收尾可能已释放资源。循环节点涉及多轮时拒绝含糊的节点地址。普通委托自行启动的非原生子图不支持内部定位。检查点不克隆外部文件、进程或远端副作用；节点仍须遵守持久输入与幂等契约，缺失工作文件直接报错。Tooling 的归档节点在派生运行中使用新运行目录，保留原归档。
 
 ## 手动跳过节点与 Stage
 
-用户只想跑图的一部分时，宿主在 `PregelRunOptions.ManualSkip` 里列出本次跳过的根图节点 ID 与 Stage ID。被选中的节点不调用正文，以原生 `Skipped` 完成并沿普通出边推进；跳过 Stage 等同其条件为假，覆盖成员与其中的路由判断节点，Stage 入口仍执行。屏障到达与汇合节点不能点名，所以跳过 Parallel 或 Route 里的分支后，屏障照常满足。跳过的节点不写状态，后继读到的是此前已提交的值或初值；是否只跳过彼此独立的部分由使用者判断，内核不推断依赖。
+用户只想跑图的一部分时，宿主在 `PregelRunOptions.ManualSkip` 里列出本次跳过的根图节点 ID 与 Stage ID。被选中的节点不调用正文，以原生 `Skipped` 完成并沿普通出边推进；跳过 Stage 等同其条件为假，覆盖成员与其中的分支判断节点，Stage 入口仍执行。屏障到达与汇合节点不能点名，所以跳过 Parallel 里的业务节点后，屏障照常满足。跳过的节点不写状态，后继读到的是此前已提交的值或初值；是否只跳过彼此独立的部分由使用者判断，内核不推断依赖。
 
 这份选择属于一次调用，不进图指纹、不进检查点：恢复同一运行时宿主须传入同一份选择，否则未执行的节点会照常运行。mutation 子运行不继承选择，节点 ID 只在根图里解析；未知节点、未定义的 Stage 或屏障控制节点在启动前以 `invalid_manual_skip` 拒绝。内核不知道“手动”来自界面还是 CLI，跳过原因由调用方给出。
 

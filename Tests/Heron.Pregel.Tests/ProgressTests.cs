@@ -7,8 +7,8 @@ public sealed class ProgressTests
     public async Task ProgressIsTypedNormalizedAndDoesNotCompleteAFailingNode()
     {
         var observer = new Observer();
-        var graph = Pregel.Define("progress").Start(ReportAndFail).Compile();
-        var result = await graph.RunAsync(new PregelEngine(), new PregelRunOptions(Observer: observer));
+        var graph = Pregel.Define<PregelUnit>("progress").Then(ReportAndFail).Compile();
+        var result = await graph.RunAsync(PregelUnit.Value, new(Observer: observer));
         Assert.Equal(PregelRunStatus.Failed, result.Status);
         Assert.Equal(new double?[] { null, 0, .42, 1, null }, observer.Progress.Select(p => p.Fraction));
         Assert.All(observer.Events, e =>
@@ -25,8 +25,8 @@ public sealed class ProgressTests
     public async Task NestedProgressIsMappedToOuterNodeIdentity()
     {
         var observer = new Observer();
-        var graph = Pregel.Define("outer").Start(Outer).Compile();
-        var result = await graph.RunAsync(new PregelEngine(), new PregelRunOptions(Observer: observer));
+        var graph = Pregel.Define<PregelUnit>("outer").Then(Outer).Compile();
+        var result = await graph.RunAsync(PregelUnit.Value, new(Observer: observer));
         Assert.Equal(PregelRunStatus.Completed, result.Status);
         Assert.Null(observer.Progress[0].Fraction);
         var value = observer.Events[1];
@@ -35,7 +35,7 @@ public sealed class ProgressTests
         Assert.Equal(.25, observer.Progress[1].Fraction);
     }
 
-    private static void ReportAndFail(PregelNodeContext context)
+    private static void ReportAndFail(PregelUnit _, PregelNodeContext context, CancellationToken token)
     {
         context.ReportProgress(null, "starting");
         context.ReportProgress(-1);
@@ -45,11 +45,13 @@ public sealed class ProgressTests
         throw new InvalidOperationException("failed after reporting progress");
     }
 
-    private static void Inner(PregelNodeContext context) => context.ReportProgress(.25, "nested");
-    private static async Task Outer(PregelNodeContext context, CancellationToken token)
+    private static void Inner(PregelUnit _, PregelNodeContext context, CancellationToken token) =>
+        context.ReportProgress(.25, "nested");
+
+    private static async Task Outer(PregelUnit _, PregelNodeContext context, CancellationToken token)
     {
-        var graph = Pregel.Define("inner").Start(Inner).Compile();
-        await graph.RunAsync(new PregelEngine(), new PregelRunOptions(Observer: new PregelProgressForwarder(context)), token);
+        var graph = Pregel.Define<PregelUnit>("inner").Then(Inner).Compile();
+        await graph.RunAsync(PregelUnit.Value, new(Observer: new PregelProgressForwarder(context)), token);
     }
 
     private sealed class Observer : PregelRunObserver

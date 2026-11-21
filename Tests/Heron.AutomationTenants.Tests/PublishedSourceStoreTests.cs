@@ -166,7 +166,7 @@ public sealed class PublishedSourceStoreTests
         await using var publisher = new MockPublisher();
         using var scope = new InstalledScope(publisher.Address + "source/");
         publisher.Publish(("Mock/Mock.csx", """
-            return Pregel.Define<string>("mock", "1").Start(Echo).Compile();
+            return Pregel.Define<string>("mock").Then(Echo).Compile();
             static string Echo(string input, PregelNodeContext context, CancellationToken token) => input;
             """));
         var entry = (await new AutomationOfficialScripts().ListAsync()).Single();
@@ -201,7 +201,7 @@ public sealed class PublishedSourceStoreTests
         await using var publisher = new MockPublisher();
         using var scope = new InstalledScope(publisher.Address + "different/");
         publisher.Publish(("Mock/Mock.csx", """
-            return Pregel.Define<string>("mock", "1").Start(Echo).Compile();
+            return Pregel.Define<string>("mock").Then(Echo).Compile();
             static string Echo(string input, PregelNodeContext context, CancellationToken token) => input;
             """));
         const string catalogPath = "/source/catalog.json";

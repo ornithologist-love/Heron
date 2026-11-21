@@ -42,11 +42,10 @@ public sealed record PregelResumeState(
     PregelInvocationId InvocationId,
     PregelEncodedValue Value);
 
-/// <summary>A stopped execution whose recovery must finish before its terminal status is published.</summary>
+/// <summary>A stopped execution whose Finally stage must finish before its terminal status is published.</summary>
 public sealed record PregelRunFinalization(
     PregelRunStatus Status,
     PregelError? Error,
-    bool RecoveryCompleted = false,
     PregelError? RecoveryError = null)
 {
     // Once best-effort cleanup has drained, explicitly retry its failed steps in declaration order.

@@ -13,10 +13,10 @@ internal static partial class ApiExport
     private static readonly Section[] Sections =
     [
         new("Graph definition and DSL", "Heron.Pregel",
-            ["Pregel", "PregelGraphDsl", "PregelLinearGraphDsl", "PregelResultGraphDsl", "PregelGraph"]),
-        new("Node context, state, expansion and routing", "Heron.Pregel",
-            ["PregelNodeContext", "PregelVariable", "PregelRetryPolicy",
-             "PregelRoute", "MutexRuleAttribute", "PregelSubgraphAttribute"]),
+            ["Pregel", "PregelFlow", "PregelGraph", "PregelRunOptions"]),
+        new("Node context, state and expansion", "Heron.Pregel",
+            ["PregelNodeContext", "PregelMapResult", "PregelOutcome", "PregelMutationMode", "PregelRetryPolicy",
+             "MutexRuleAttribute", "PregelSubgraphAttribute"]),
         new("Automation templates", "Heron.Pregel.Automation",
             ["AutomationTemplate", "AutomationGraphTemplateBase", "AutomationGraphTemplate", "AutomationRunResult",
              "AutomationField", "AutomationChoice", "TemplateIdAttribute"]),
@@ -54,7 +54,7 @@ internal static partial class ApiExport
             foreach (var type in tree.GetRoot().DescendantNodes().OfType<BaseTypeDeclarationSyntax>())
             {
                 if (type.Parent is BaseTypeDeclarationSyntax || !wanted.Contains(type.Identifier.Text)) continue;
-                if (!type.Modifiers.Any(SyntaxKind.PublicKeyword)) continue;
+                if (!type.Modifiers.Any(SyntaxKind.PublicKeyword) || IsObsolete(type.AttributeLists)) continue;
                 var arity = type is TypeDeclarationSyntax { TypeParameterList: { } list } ? list.Parameters.Count : 0;
                 parts.Add(new(type.Identifier.Text, arity, type));
             }
@@ -120,6 +120,7 @@ internal static partial class ApiExport
             && !modifiers.Any(SyntaxKind.InternalKeyword);
         if (!isPublic && !isProtected) return null;
         if (owner.Modifiers.Any(SyntaxKind.SealedKeyword) && !isPublic) return null;
+        if (IsObsolete(member.AttributeLists)) return null;
         SyntaxNode? stripped = member switch
         {
             MethodDeclarationSyntax method when method.ExplicitInterfaceSpecifier is null =>
@@ -176,6 +177,15 @@ internal static partial class ApiExport
         var summary = Flatten(System.Net.WebUtility.HtmlDecode(body));
         return summary.Length == 0 ? null : summary;
     }
+
+    private static bool IsObsolete(SyntaxList<AttributeListSyntax> attributeLists) =>
+        attributeLists.SelectMany(list => list.Attributes).Any(attribute =>
+        {
+            var name = attribute.Name.ToString();
+            return name is "Obsolete" or "ObsoleteAttribute" or "System.Obsolete" or "System.ObsoleteAttribute"
+                || name.EndsWith(".Obsolete", StringComparison.Ordinal)
+                || name.EndsWith(".ObsoleteAttribute", StringComparison.Ordinal);
+        });
 
     [GeneratedRegex(@"\s+")] private static partial Regex WhitespaceRun();
     [GeneratedRegex(@"\{\s*((?:[a-z ]+;\s*)+)\}$")] private static partial Regex AccessorBlock();

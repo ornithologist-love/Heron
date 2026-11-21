@@ -78,19 +78,20 @@ public sealed class DurableReexecutionTests : IDisposable
     public async Task NativeMutationContinue_RestoresChildProgress_AndPreservesCompletedInstances(PregelMutationMode mode)
     {
         var flow = new MutationFlow();
-        var child = Pregel.Define<int>("child").Start(flow.Prepare).Then(flow.Finish).Compile();
-        var parent = Pregel.Define<int>("parent").Start(MutationFlow.Input);
-        var graph = mode == PregelMutationMode.Parallel
-            ? parent.Parallel("items", MutationFlow.Select, value => value.ToString(), item => item.Graph("child", child)).Compile()
-            : parent.ForEach("items", MutationFlow.Select, value => value.ToString(), item => item.Graph("child", child)).Compile();
-        var source = await graph.Prepare(0, engine: Engine()).RunAsync();
+        var child = Pregel.Define<int>("child").Then(flow.Prepare).Then(flow.Finish).Compile();
+        var graph = Pregel.Define<int>("parent").Then(MutationFlow.Input)
+            .Map("items", MutationFlow.Select, value => value.ToString(), item => item.Graph("child", child), mode)
+            .Compile();
+        var source = await graph.Prepare(0, new() { Engine = Engine() }).RunAsync();
         source.Status.Should().Be(PregelRunStatus.Failed);
         var derived = new PregelRunId("derived-mutation");
         await Engine().CreateReexecutionAsync(graph.Compiled, source.RunId, derived, new(PregelReexecutionMode.Continue, []));
         flow.Fail = false;
         var completed = await Engine().ResumeAsync(graph.Compiled, derived);
         completed.Status.Should().Be(PregelRunStatus.Completed);
-        graph.Read(completed).Should().Equal(1, 2);
+        var output = graph.Read(completed);
+        output.Items.Should().Equal(1, 2);
+        output.State.Should().Be(0);
         flow.Prepared[1].Should().Be(1);
         flow.Prepared[2].Should().Be(1, "the failed child continues after its own committed prefix");
         flow.Finished[1].Should().Be(1, "the completed child is reused");
@@ -106,6 +107,90 @@ public sealed class DurableReexecutionTests : IDisposable
         public static int Input(int value, PregelNodeContext context, CancellationToken token) => value;
         public static IReadOnlyList<int> Select(int _) => [1, 2];
         public int Prepare(int value, PregelNodeContext context, CancellationToken token) { Prepared.AddOrUpdate(value, 1, (_, n) => n + 1); return value; }
-        public int Finish(int value, PregelNodeContext context, CancellationToken token) { Finished.AddOrUpdate(value, 1, (_, n) => n + 1); if (Fail && value == 2) throw new IOException("synthetic child failure"); return value; }
+        public Task<int> Finish(int value, PregelNodeContext context, CancellationToken token)
+        {
+            Finished.AddOrUpdate(value, 1, (_, n) => n + 1);
+            if (Fail && value == 2) throw new IOException("synthetic child failure");
+            return Task.FromResult(value);
+        }
+    }
+
+    [Fact]
+    public async Task PullInputArgumentSurvivesCheckpointRecovery()
+    {
+        var step = new BoundStep();
+        var builder = new PregelGraphBuilder("durable-argument");
+        var start = builder.Node("start", (_, _) => ValueTask.CompletedTask);
+        var read = builder.Node("read", "saved argument", (arg, _, token) => new ValueTask(step.Read(arg, token)));
+        var graph = builder.SetEntry(start).AddEdge(start, read).Compile();
+        var source = await Engine().StartAsync(graph);
+        source.Status.Should().Be(PregelRunStatus.Failed);
+        var derived = new PregelRunId("derived-argument");
+        await Engine().CreateReexecutionAsync(graph, source.RunId, derived, new(PregelReexecutionMode.Continue, []));
+
+        step.Fail = false;
+        (await Engine().ResumeAsync(graph, derived)).Status.Should().Be(PregelRunStatus.Completed);
+        step.Value.Should().Be("saved argument");
+    }
+
+    private sealed class BoundStep
+    {
+        public bool Fail { get; set; } = true;
+        public string? Value { get; private set; }
+
+        public Task Read(string argument, CancellationToken token)
+        {
+            if (Fail) throw new IOException("synthetic failure");
+            Value = argument;
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task Map_PreservesSummaryAfterSameTypeSkipAndCheckpointRecovery()
+    {
+        var steps = new SummarySteps();
+        var graph = Pregel.Define<int[]>("durable-summary")
+            .Stage<int>("summarize", "Summarize", stage => stage
+                .Map("items", items => items, item => item.ToString(), item => item.Then(steps.Copy))
+                .Then(steps.Sum)
+                .Then(steps.Reset).When(_ => false)
+                .Then(steps.Finish))
+            .Compile();
+
+        var source = await graph.Prepare([3, 5], new() { Engine = Engine() }).RunAsync();
+        source.Status.Should().Be(PregelRunStatus.Failed);
+        var derived = new PregelRunId("derived-summary");
+        await Engine().CreateReexecutionAsync(graph.Compiled, source.RunId, derived, new(PregelReexecutionMode.Continue, []));
+
+        steps.Fail = false;
+        var completed = await Engine().ResumeAsync(graph.Compiled, derived);
+
+        completed.Status.Should().Be(PregelRunStatus.Completed);
+        graph.Read(completed).Should().Be(8);
+        steps.SummaryCalls.Should().Be(1);
+    }
+
+    private sealed class SummarySteps
+    {
+        public bool Fail = true;
+        public int SummaryCalls;
+
+        public Task<int> Copy(int item, PregelNodeContext context, CancellationToken token) => Task.FromResult(item);
+
+        public Task<int> Sum(PregelMapResult<int[], int> expansion, PregelNodeContext context, CancellationToken token)
+        {
+            SummaryCalls++;
+            return Task.FromResult(expansion.Items.Sum());
+        }
+
+        public Task<int> Reset(int value, PregelNodeContext context, CancellationToken token) => Task.FromResult(0);
+
+        public Task Finish(int value, PregelNodeContext context, CancellationToken token)
+        {
+            if (Fail) throw new IOException("synthetic failure");
+            value.Should().Be(8);
+            return Task.CompletedTask;
+        }
     }
 }

@@ -47,17 +47,13 @@ public abstract record PregelCommand
     public sealed record CompleteMutation(string PlanId) : PregelCommand;
 }
 
-/// <summary>
-/// During recovery, reads expose committed state and observations remain available;
-/// writes and graph commands throw because finalization does not publish them.
-/// </summary>
+/// <summary>Reads committed state and records writes and commands for the current invocation.</summary>
 public sealed class PregelNodeContext
 {
     private readonly CompiledPregelGraph _graph;
     private readonly PregelCheckpoint _checkpoint;
     private readonly PregelInvocation _invocation;
     private readonly IPregelRunObserver? _observer;
-    private readonly bool _isRecovery;
     private readonly List<PregelWrite> _writes = [];
     private readonly Dictionary<ChannelId, object> _variableWrites = [];
     private readonly List<PregelCommand> _commands = [];
@@ -67,13 +63,12 @@ public sealed class PregelNodeContext
         PregelCheckpoint checkpoint,
         PregelInvocation invocation,
         IPregelRunObserver? observer = null,
-        bool isRecovery = false, int maxMutationInstances = 10_000)
+        int maxMutationInstances = 10_000)
     {
         _graph = graph;
         _checkpoint = checkpoint;
         _invocation = invocation;
         _observer = observer;
-        _isRecovery = isRecovery;
         MaxMutationInstances = maxMutationInstances;
     }
 
@@ -85,7 +80,7 @@ public sealed class PregelNodeContext
     internal int MaxMutationInstances { get; }
     internal string? MutationSkipReason { get; set; }
     internal PregelEncodedValue? EncodedResume => HasResumeValue ? _checkpoint.Resume!.Value.Copy() : null;
-    internal void Emit(PregelCommand command) { EnsureCanMutate(nameof(Emit)); _commands.Add(command); }
+    internal void Emit(PregelCommand command) => _commands.Add(command);
     public string WorkingDirectory => _checkpoint.WorkingDirectory;
     public NodeId NodeId => _invocation.NodeId;
     /// <summary>The original body result, available to ordinary nodes in the Finally stage.</summary>
@@ -144,7 +139,6 @@ public sealed class PregelNodeContext
 
     public void Write<TState, TUpdate>(ChannelRef<TState, TUpdate> channel, TUpdate update)
     {
-        EnsureCanMutate(nameof(Write));
         ArgumentNullException.ThrowIfNull(update);
         EnsureChannelOwned(channel.Runtime);
         _writes.Add(new PregelWrite(
@@ -157,7 +151,6 @@ public sealed class PregelNodeContext
 
     public void Send<TInput>(NodeRef<TInput> target, TInput input)
     {
-        EnsureCanMutate(nameof(Send));
         ArgumentNullException.ThrowIfNull(input);
         EnsureNodeOwned(target.Runtime);
         _commands.Add(new PregelCommand.Send(target.Id, target.Runtime.EncodeInput(input)));
@@ -165,14 +158,12 @@ public sealed class PregelNodeContext
 
     public void Goto<TInput>(NodeRef<TInput> target)
     {
-        EnsureCanMutate(nameof(Goto));
         EnsureNodeOwned(target.Runtime);
         _commands.Add(new PregelCommand.Goto(target.Id));
     }
 
     public void End()
     {
-        EnsureCanMutate(nameof(End));
         _commands.Add(new PregelCommand.End());
     }
 
@@ -196,7 +187,6 @@ public sealed class PregelNodeContext
     /// <summary>Replaces a graph variable; the new value is visible to later supersteps after the barrier.</summary>
     public void Write<T>(PregelVariable<T> variable, T value)
     {
-        EnsureCanMutate(nameof(Write));
         ArgumentNullException.ThrowIfNull(variable);
         Write(variable.Channel, value);
         _variableWrites[variable.Channel.Id] = value!;
@@ -204,14 +194,12 @@ public sealed class PregelNodeContext
 
     public void Interrupt(string reason)
     {
-        EnsureCanMutate(nameof(Interrupt));
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         _commands.Add(new PregelCommand.Interrupt(reason, null));
     }
 
     public void Interrupt<T>(string reason, T payload, ICheckpointCodec<T>? codec = null)
     {
-        EnsureCanMutate(nameof(Interrupt));
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         ArgumentNullException.ThrowIfNull(payload);
         var selectedCodec = codec ?? CheckpointCodecs.Default<T>();
@@ -222,13 +210,6 @@ public sealed class PregelNodeContext
 
     internal IReadOnlyList<PregelWrite> Writes => _writes;
     internal IReadOnlyList<PregelCommand> Commands => _commands;
-
-    private void EnsureCanMutate(string operation)
-    {
-        if (_isRecovery)
-            throw new PregelException("recovery_operation_not_allowed",
-                $"Recovery cannot call {operation}: state writes and graph commands are not supported during finalization.");
-    }
 
     private void EnsureChannelOwned(IChannelRuntime channel)
     {

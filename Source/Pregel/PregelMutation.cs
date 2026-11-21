@@ -95,7 +95,8 @@ internal abstract class PregelMutationRuntime(PregelMutationDefinition definitio
 
 internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefinition definition,
     CompiledPregelGraph template, PregelVariable<TItem> inputVariable, Func<PregelRunResult, TResult> readResult,
-    PregelVariable<IReadOnlyList<TResult>> output, Func<TResult, string?>? skipReason, Func<TItem, string?>? itemSkipReason)
+    Action<PregelNodeContext, IReadOnlyList<TResult>> publish, Func<TResult, string?>? skipReason,
+    Func<TItem, string?>? itemSkipReason)
     : PregelMutationRuntime(definition), IPregelResultSkip<TResult>
 {
     private readonly ICheckpointCodec<TItem> _input = CheckpointCodecs.Default<TItem>();
@@ -167,7 +168,7 @@ internal sealed class PregelMutationRuntime<TItem, TResult>(PregelMutationDefini
             results.Add(_result.Decode(value.Data));
             if (SkipReason(value) is { } resultReason) reasons.Add(resultReason);
         }
-        context.Write(output, results.ToArray());
+        publish(context, results.ToArray());
         if (reasons.Count > 0 && reasons.Count == plan.Instances.Count)
             context.MutationSkipReason = string.Join("\n", reasons.Distinct(StringComparer.Ordinal));
         context.Emit(new PregelCommand.CompleteMutation(plan.Id));
@@ -236,7 +237,7 @@ internal static class PregelMutationGraph
                 Stages = stages.ToArray(), Finally = final, RunGraphRevision = checkpoint.RunGraphRevision },
             nodes.ToFrozenDictionary(), channels.ToFrozenDictionary(), triggerIndex,
             outgoing.ToFrozenDictionary(x => x.Key, x => (IReadOnlyList<EdgeRuntime>)x.Value.ToArray()), source.StartChannel, source.Variables)
-            { Recovery = source.Recovery, StageConditions = source.StageConditions, StageGuards = source.StageGuards,
+            { StageConditions = source.StageConditions, StageGuards = source.StageGuards,
               BarrierControls = source.BarrierControls, Mutations = source.Mutations, MutationBase = source,
                 BeforeRoutes = source.BeforeRoutes, AfterRoutes = source.AfterRoutes, RouteScopes = source.RouteScopes };
 

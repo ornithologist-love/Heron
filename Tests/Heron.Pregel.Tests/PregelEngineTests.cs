@@ -7,14 +7,14 @@ public sealed class PregelEngineTests
     public async Task LinearGraph_RunsP4RevertThenSyncLatest_InSeparateSupersteps()
     {
         var runner = new RecordingToolExecutionRunner();
-        var tasks = new UserP4Tasks();
+        var tasks = new UserP4Tasks(runner);
         var graph = Pregel
-            .Define("p4-revert-sync")
-            .Start(tasks.MyP4Revert)
-            .Then(tasks.MyP4SyncLatest, "MyPath")
+            .Define<string>("p4-revert-sync")
+            .Then(tasks.MyP4Revert)
+            .Then(tasks.MyP4SyncLatest)
             .Compile();
 
-        var result = await graph.RunAsync(runner);
+        var result = await graph.RunAsync("MyPath");
 
         result.Status.Should().Be(PregelRunStatus.Completed);
         runner.Executions.Should().Equal(
@@ -27,14 +27,14 @@ public sealed class PregelEngineTests
     public async Task ToolExecution_NonZeroExitCodeFailsNode_AndStopsFollowingTask()
     {
         var runner = new RecordingToolExecutionRunner { ExitCode = 17 };
-        var tasks = new UserP4Tasks();
+        var tasks = new UserP4Tasks(runner);
         var graph = Pregel
-            .Define("p4-tool-failure")
-            .Start(tasks.MyP4Revert)
-            .Then(tasks.MyP4SyncLatest, "MyPath")
+            .Define<string>("p4-tool-failure")
+            .Then(tasks.MyP4Revert)
+            .Then(tasks.MyP4SyncLatest)
             .Compile();
 
-        var result = await graph.RunAsync(runner);
+        var result = await graph.RunAsync("MyPath");
 
         result.Status.Should().Be(PregelRunStatus.Failed);
         result.Error!.Code.Should().Be("tool_execution_failed");
@@ -171,12 +171,19 @@ public sealed class PregelEngineTests
         }
     }
 
-    private sealed class UserP4Tasks
+    private sealed class UserP4Tasks(IToolExecutionRunner runner)
     {
-        public BashExecution MyP4Revert() =>
-            NewBashExecution("p4 -c heron-workspace revert //...");
+        public Task MyP4Revert(string _, PregelNodeContext context, CancellationToken token) =>
+            RunCheckedAsync(NewBashExecution("p4 -c heron-workspace revert //..."), context, token);
 
-        public PSExecution MyP4SyncLatest(string path) =>
-            NewPSExecution($"p4 -c heron-workspace sync //{path}/...#head");
+        public Task MyP4SyncLatest(string path, PregelNodeContext context, CancellationToken token) =>
+            RunCheckedAsync(NewPSExecution($"p4 -c heron-workspace sync //{path}/...#head"), context, token);
+
+        private async Task RunCheckedAsync(ToolExecution execution, PregelNodeContext context, CancellationToken token)
+        {
+            var result = await runner.ExecuteAsync(execution, context.Output, token).ConfigureAwait(false);
+            if (!result.Succeeded)
+                throw new PregelException("tool_execution_failed", $"{execution.GetType().Name} exited with code {result.ExitCode}.");
+        }
     }
 }

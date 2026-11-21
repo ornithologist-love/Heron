@@ -26,6 +26,7 @@ public sealed class AutomationGraphScript : IAutomationReviewTemplate, IAutomati
     private readonly Func<AutomationTask, object?, AutomationRunResult>? _complete;
     private readonly string _failureSummary;
     private AutomationInputSchema? _inputSchema;
+    internal bool WriteResultArtifact { private get; init; } = true;
     public AutomationGraphScript(string id, string path, string stateRoot, DynamicPregelGraph graph,
         Func<AutomationTask, object?>? input = null, Func<AutomationTask, object?, AutomationRunResult>? complete = null,
         string failureSummary = "脚本执行失败")
@@ -89,9 +90,9 @@ public sealed class AutomationGraphScript : IAutomationReviewTemplate, IAutomati
             SkipNodes = context.ManualSkip?.Nodes.Select(node => node.Value).Order(StringComparer.Ordinal).ToArray(),
             SkipStages = context.ManualSkip?.Stages.Order(StringComparer.Ordinal).ToArray()
         };
-        var run = _graph.Prepare(_input != null ? _input(context.Task) : _inputType == null ? null : Input(context.Task), _engine,
+        var run = _graph.Prepare(_input != null ? _input(context.Task) : _inputType == null ? null : Input(context.Task),
             Options(context, initial));
-        // Identity and the manual selection must be durable before any node or recovery handler can execute.
+        // Identity and the manual selection must be durable before any node can execute.
         await WriteStateAsync(context, initial with { RunId = run.Id.Value }, CancellationToken.None);
         return await ExecuteAsync(context, run, 1, () => run.RunAsync(token), token);
     }
@@ -102,10 +103,10 @@ public sealed class AutomationGraphScript : IAutomationReviewTemplate, IAutomati
             cancellationToken: token);
 
     // Every engine call of one automation run uses the selection saved with that run: the engine does not persist it.
-    private static PregelRunOptions Options(AutomationRunContext context, RunState state) =>
+    private PregelRunOptions Options(AutomationRunContext context, RunState state) =>
         new(Observer: context.Observer, FinalizationCancellationToken: context.FinalizationCancellationToken)
         {
-            ExecutionMachine = Environment.MachineName, SubgraphExecutor = context.SubgraphExecutor,
+            Engine = _engine, ExecutionMachine = Environment.MachineName, SubgraphExecutor = context.SubgraphExecutor,
             ManualSkip = state.SkipNodes is { Length: > 0 } || state.SkipStages is { Length: > 0 }
                 ? new((state.SkipNodes ?? []).Select(node => new NodeId(node)).ToHashSet(), (state.SkipStages ?? []).ToHashSet(),
                     AutomationManualSelection.SkipReason)
@@ -216,7 +217,8 @@ public sealed class AutomationGraphScript : IAutomationReviewTemplate, IAutomati
             return AutomationRunResult.Cancelled("已终止本次，必要收尾已完成，后续正文未执行");
         if (result.Status == PregelRunStatus.Cancelled) return AutomationRunResult.Cancelled(result.Error?.Message ?? "已取消");
         if (result.Status != PregelRunStatus.Completed) return AutomationRunResult.Failed(result.Error?.Message ?? _failureSummary);
-        if (_graph.OutputType == null) return _complete?.Invoke(context.Task, null) ?? AutomationRunResult.Succeeded("脚本执行完成");
+        if (!WriteResultArtifact || _graph.OutputType == typeof(PregelUnit))
+            return _complete?.Invoke(context.Task, _graph.Read(result)) ?? AutomationRunResult.Succeeded("脚本执行完成");
         var output = Path.Combine(Path.GetDirectoryName(StateFile(context))!, "result.json");
         var value = _graph.Read(result);
         await File.WriteAllTextAsync(output, JsonSerializer.Serialize(value, Json), new UTF8Encoding(false), CancellationToken.None);

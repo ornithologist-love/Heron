@@ -111,7 +111,7 @@ namespace Heron.Pregel.Cli
         private static async Task<int> ValidateAsync(Options options)
         {
             var graph = await LoadGraphAsync(options);
-            Console.WriteLine($"OK {graph.Compiled.Definition.GraphId} revision {graph.Compiled.Definition.Revision}");
+            Console.WriteLine($"OK {graph.Compiled.Definition.GraphId}");
             return 0;
         }
 
@@ -121,7 +121,6 @@ namespace Heron.Pregel.Cli
             Console.WriteLine(JsonSerializer.Serialize(new
             {
                 graphId = definition.GraphId,
-                revision = definition.Revision,
                 fingerprint = definition.Fingerprint,
                 entryNode = definition.EntryNode.Value,
                 nodes = definition.Nodes.Select(node => new

@@ -100,23 +100,23 @@ public sealed class ReexecutionTests
         (await store.LoadLatestAsync(new PregelRunId("reexecution-preview"))).Should().BeNull("a preview never persists a run");
     }
 
-    private static void Prepare(PregelNodeContext context) { }
-    private static void Fail(PregelNodeContext context) => throw new InvalidOperationException("boom");
-    private static void Cleanup(PregelNodeContext context) { }
+    private static void Prepare(PregelUnit _, PregelNodeContext context, CancellationToken token) { }
+    private static Task Fail(PregelUnit _, PregelNodeContext context, CancellationToken token) => throw new InvalidOperationException("boom");
+    private static void Cleanup(PregelOutcome<PregelUnit, PregelUnit> _, PregelNodeContext context, CancellationToken token) { }
 
     [Fact]
     public async Task GraphWithFinally_RefusesMidRunRestore()
     {
-        var graph = Pregel.Define("reexecution-finally")
-            .Start(Prepare)
+        var graph = Pregel.Define<PregelUnit>("reexecution-finally")
+            .Then(Prepare)
             .Then(Fail)
             .Finally(stage => stage.Then(Cleanup))
-            .Compile().Compiled;
+            .Compile();
         var engine = new PregelEngine();
-        var failed = await engine.StartAsync(graph);
+        var failed = await graph.Prepare(PregelUnit.Value, new() { Engine = engine }).RunAsync();
         failed.Status.Should().Be(PregelRunStatus.Failed);
 
-        var preview = () => engine.PreviewReexecutionAsync(graph, failed.RunId, new(PregelReexecutionMode.Continue, [])).AsTask();
+        var preview = () => engine.PreviewReexecutionAsync(graph.Compiled, failed.RunId, new(PregelReexecutionMode.Continue, [])).AsTask();
 
         (await preview.Should().ThrowAsync<PregelException>()).Which.Code.Should().Be("reexecution_resources_released");
     }
