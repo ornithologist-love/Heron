@@ -104,17 +104,25 @@ public sealed class ShellWindowTests
 
     [Fact]
     [Anchor("Docs/client-framework.md")]
-    public void ShellWindowAppliesShellBrandingTitleIconAndWindowIcon()
+    public void ShellWindowAppliesBuiltInDefaultAndOverriddenShellBranding()
     {
         HeadlessAppSupport.EnsureInitialized();
-        using var bitmap = new WriteableBitmap(new PixelSize(16, 16), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
-        var windowIcon = new WindowIcon(bitmap);
-        ShellBranding.Configure(windowIcon, bitmap);
+        ShellBranding.ResetToDefaults();
         try
         {
+            var defaultWindow = new ShellWindow();
+            defaultWindow.Icon.Should().NotBeNull();
+            defaultWindow.TitleIcon.Should().NotBeNull();
+            new ShellUser().Avatar.Should().BeSameAs(defaultWindow.TitleIcon);
+
+            using var bitmap = new WriteableBitmap(new PixelSize(16, 16), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+            var windowIcon = new WindowIcon(bitmap);
+            ShellBranding.Configure(windowIcon, bitmap);
+
             var window = new ShellWindow();
             window.Icon.Should().BeSameAs(windowIcon);
             window.TitleIcon.Should().BeSameAs(bitmap);
+            new ShellUser().Avatar.Should().BeSameAs(bitmap);
 
             using var overrideImage = new WriteableBitmap(new PixelSize(8, 8), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
             window.TitleIcon = overrideImage;
@@ -122,7 +130,7 @@ public sealed class ShellWindowTests
         }
         finally
         {
-            ShellBranding.Configure(null, null);
+            ShellBranding.ResetToDefaults();
         }
     }
 

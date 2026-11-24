@@ -36,6 +36,6 @@ public sealed partial class ShellUser : ObservableObject, IShellUser
     [ObservableProperty] private string _accountName = "";
     [ObservableProperty] private string _organization = "";
     [ObservableProperty] private string _initials = "";
-    [ObservableProperty] private IImage? _avatar;
+    [ObservableProperty] private IImage? _avatar = ShellBranding.TitleIcon;
     [ObservableProperty] private string _description = "";
 }

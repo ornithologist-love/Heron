@@ -15,4 +15,7 @@
     <PackageReference Include="FluentIcons.Avalonia" />
     <PackageReference Include="Serilog" />
   </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
 </Project>
