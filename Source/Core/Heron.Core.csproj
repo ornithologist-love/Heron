@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Heron.Core</PackageId>
+    <AssemblyName>Heron.Core</AssemblyName>
+    <RootNamespace>Heron.Core</RootNamespace>
+    <Description>Zero-dependency BCL foundation utilities: process runner, owned process registry, Windows process/file-lock inventory, JSON modular configuration, daily task scheduling, path safety, and glob matching.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Heron.ClientFramework.Tests" />
+  </ItemGroup>
+</Project>

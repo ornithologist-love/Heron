@@ -1,6 +1,6 @@
 ---
 type: architecture
-covers: [Source/Pregel/**, Source/Pregel.Tooling/**]
+covers: [Source/Pregel/**]
 ---
 
 # Pregel 图执行引擎
@@ -11,7 +11,7 @@ covers: [Source/Pregel/**, Source/Pregel.Tooling/**]
 
 `Heron.Pregel` 是可独立构造、执行、测试和恢复的 C# Pregel Core，负责一张 Graph 的一次 Run：根据 Graph 和 Checkpoint 计算可运行的 Invocation，执行节点，持久化 Pending Writes，在同步屏障提交状态并继续，直到完成、失败、中断或取消。
 
-**纯净边界**：Core 只拥有 Graph、Stage、Node、Edge、Channel、Reducer、Invocation、Attempt、Superstep、Barrier、Trigger、Send、Mutation、ExpansionPlan、Pending Writes、Retry、Interrupt、Resume、Cancellation、Checkpoint 这些概念。不拥有外部配置文件格式、流程插件、反射注册、任何业务对象、Secret、Client UI、进程执行（后者属于单向依赖 Kernel 的 `Heron.Pregel.Tooling` 适配层）。依赖方向只能是宿主依赖 Core，Core 不引用任何宿主项目。
+Core 只拥有 Graph、Stage、Node、Edge、Channel、Reducer、Invocation、Attempt、Superstep、Barrier、Trigger、Send、Mutation、ExpansionPlan、Pending Writes、Retry、Interrupt、Resume、Cancellation 和 Checkpoint。进程执行由同程序集内的 `Heron.Pregel.Tooling` 适配层接入，适配层单向使用内核。外部配置文件格式、流程插件、业务对象、Secret 和 Client UI 由宿主负责。
 
 ## 为什么是 Pregel、为什么用 C# 重写
 
@@ -32,7 +32,7 @@ Pregel 的节点、通道和同步屏障让并发写入有确定的提交边界�
 
 ## 实现现状
 
-源码按职责位于 Source/Pregel、Source/Pregel.Tooling、Source/Pregel.Scripting、Source/Pregel.Automation 与 Source/Pregel.Cli。内核只依赖 BCL；进程执行和脚本编译依次在外层接入。本地自动化和 CLI 复用内核，不引入图形界面或产品宿主依赖。
+内核和 Tooling 位于 `Source/Pregel/`，只依赖 BCL。`Source/Pregel.Automation/` 提供本地任务及其 Roslyn 脚本装载层，`Source/Pregel.Cli/` 复用这两层。它们均独立于图形界面和产品宿主。
 
 关键方案：
 

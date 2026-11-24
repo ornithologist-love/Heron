@@ -33,8 +33,7 @@ public static class PregelScript
         var source = TransformSource(await File.ReadAllTextAsync(fullPath, cancellationToken).ConfigureAwait(false));
         var options = ScriptOptions.Default
             .WithFilePath(fullPath)
-            .AddReferences(typeof(Pregel).Assembly, typeof(ProcessExecution).Assembly,
-                typeof(PregelScriptGlobals).Assembly, typeof(ProcessStartInfo).Assembly,
+            .AddReferences(typeof(Pregel).Assembly, typeof(PregelScriptGlobals).Assembly, typeof(ProcessStartInfo).Assembly,
                 typeof(System.ComponentModel.DisplayNameAttribute).Assembly)
             .AddImports("System", "System.IO", "System.Linq", "System.Collections.Generic",
                 "System.Threading", "System.Threading.Tasks", "System.Diagnostics",

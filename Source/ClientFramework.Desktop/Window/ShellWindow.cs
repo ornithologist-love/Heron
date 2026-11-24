@@ -89,9 +89,9 @@ public class ShellWindow : Window
         WindowDecorations = WindowDecorations.Full;
         ExtendClientAreaTitleBarHeightHint = 40;
         WindowDecorationsTheme = CreateDecorationsTheme();
-        Styles.Add(new Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://Heron.ClientFramework.Shell/"))
+        Styles.Add(new Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://Heron.ClientFramework.Infrastructure/"))
         {
-            Source = new Uri("avares://Heron.ClientFramework.Shell/Themes/ShellStyles.axaml"),
+            Source = new Uri("avares://Heron.ClientFramework.Infrastructure/Themes/ShellStyles.axaml"),
         });
         _layout = new ShellLayout(this);
         Content = _layout;

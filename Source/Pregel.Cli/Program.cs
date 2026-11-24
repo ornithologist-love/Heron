@@ -105,7 +105,7 @@ namespace Heron.Pregel.Cli
         {
             var path = options.Positional ?? throw new ArgumentException("A .csx file is required.");
             if (!File.Exists(path)) throw new FileNotFoundException("Script not found: " + path);
-            return await PregelScript.LoadAsync(path, [typeof(AutomationRuntime).Assembly], ["Heron.Pregel.Automation"]);
+            return await PregelScript.LoadAsync(path, [], ["Heron.Pregel.Automation"]);
         }
 
         private static async Task<int> ValidateAsync(Options options)

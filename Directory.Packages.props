@@ -24,6 +24,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
     <PackageVersion Include="Serilog" Version="4.2.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageVersion Include="Velopack" Version="1.2.0" />
     <PackageVersion Include="Avalonia.Controls.WebView" Version="12.1.0" />
     <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3240.44" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />

@@ -1,32 +1,37 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageId>Heron.ClientFramework.Infrastructure</PackageId>
+    <PackageId>Heron.ClientFramework.Desktop</PackageId>
+    <!-- Keep the assembly identity used by existing desktop plugins. -->
     <AssemblyName>Heron.ClientFramework.Infrastructure</AssemblyName>
     <RootNamespace>Heron.ClientFramework.Infrastructure</RootNamespace>
-    <Description>Desktop client infrastructure: logging, diagnostics, WebView lifecycle, notifications and window presence.</Description>
+    <Description>Desktop plugin runtime, services, and shell for Heron hosts.</Description>
     <IsPackable>true</IsPackable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Heron.ClientFramework.Tests" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="../ClientFramework.Abstractions/Heron.ClientFramework.Abstractions.csproj" />
     <ProjectReference Include="../Client.Controls/Heron.ClientControls.csproj" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Controls.WebView" />
-    <PackageReference Include="Microsoft.Web.WebView2" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />
-    <!-- Avalonia owns the native browser; use only Microsoft's Core interop, not WPF/WinForms hosts. -->
-    <Reference Include="Microsoft.Web.WebView2.Core" HintPath="$(PkgMicrosoft_Web_WebView2)/lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll" />
-    <!-- A private manual reference is not a NuGet dependency. Ship the Core interop
-         with this library so package consumers get the same runtime closure as source consumers. -->
-    <None Include="$(PkgMicrosoft_Web_WebView2)/lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll"
-          Pack="true" PackagePath="lib/net8.0/" Visible="false" />
-    <None Include="$(PkgMicrosoft_Web_WebView2)/LICENSE.txt"
-          Pack="true" PackagePath="licenses/Microsoft.Web.WebView2.LICENSE.txt" Visible="false" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="FluentIcons.Avalonia" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Velopack" />
+    <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />
+    <!-- Avalonia owns the native browser; use only Microsoft's Core interop, not WPF/WinForms hosts. -->
+    <Reference Include="Microsoft.Web.WebView2.Core" HintPath="$(PkgMicrosoft_Web_WebView2)/lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll" />
+    <!-- Package consumers need the same runtime closure as source consumers. -->
+    <None Include="$(PkgMicrosoft_Web_WebView2)/lib_manual/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll"
+          Pack="true" PackagePath="lib/net8.0/" Visible="false" />
+    <None Include="$(PkgMicrosoft_Web_WebView2)/LICENSE.txt"
+          Pack="true" PackagePath="licenses/Microsoft.Web.WebView2.LICENSE.txt" Visible="false" />
   </ItemGroup>
 </Project>

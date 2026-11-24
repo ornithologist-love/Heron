@@ -72,17 +72,21 @@ $packages = @(foreach ($project in (Get-ChildItem -LiteralPath (Join-Path $PSScr
 if (@($packages.Id | Sort-Object -Unique).Count -ne $packages.Count) {
     throw 'Multiple projects declare the same package ID.'
 }
+$feedPackageIds = @(
+    'Heron.AutomationTenants', 'Heron.ClientControls', 'Heron.ClientFramework.Abstractions',
+    'Heron.ClientFramework.Desktop', 'Heron.ClientFramework.Plugins', 'Heron.Core',
+    'Heron.Pregel', 'Heron.Pregel.Automation', 'Heron.Pregel.Avalonia'
+)
+foreach ($id in $feedPackageIds) {
+    if ($id -notin $packages.Id) { throw "Consumer feed package is missing: $id" }
+}
 $outputDirectory = [System.IO.Path]::GetFullPath($Output, $PSScriptRoot)
 if ($List) {
-    $plan = [ordered]@{ Version = $version; HostApi = $hostApi; Baseline = $baselineVersion; Output = $outputDirectory; Feed = $Feed; Packages = $packages }
+    $plan = [ordered]@{ Version = $version; HostApi = $hostApi; Baseline = $baselineVersion; Output = $outputDirectory; Feed = $Feed; FeedPackageIds = $feedPackageIds; Packages = $packages }
     if (!$NuGetOnly) { $plan.Server = "Heron.AutomationTenants.Server.$version.$ServerRuntime.tar.gz" }
     [pscustomobject]$plan | ConvertTo-Json -Depth 4
     return
 }
-if ($packages.Count -eq 0) {
-    throw 'No packable libraries under Source. Add a real library with IsPackable=true before packing.'
-}
-
 $dirty = & git -C $PSScriptRoot status --porcelain
 if ($LASTEXITCODE -ne 0) {
     throw 'Failed to inspect Heron git working tree.'
@@ -103,14 +107,14 @@ $archives = @(foreach ($package in $packages) {
     $name = "$($package.Id).$($package.Version).nupkg"
     $source = Join-Path $staging $name
     if (!(Test-Path -LiteralPath $source -PathType Leaf)) { throw "Expected package was not produced: $name" }
-    [pscustomobject]@{ Name = $name; Source = $source; Sha256 = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash }
+    [pscustomobject]@{ Id = $package.Id; Name = $name; Source = $source; Sha256 = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash }
 })
 
 # Inspect final bytes after compilation and assembly rewriting.
 foreach ($archive in $archives) {
     $zip = [System.IO.Compression.ZipFile]::OpenRead($archive.Source)
     try {
-        if ($archive.Name -like 'Heron.ClientFramework.Infrastructure.*.nupkg') {
+        if ($archive.Id -eq 'Heron.ClientFramework.Desktop') {
             foreach ($required in @('lib/net8.0/Microsoft.Web.WebView2.Core.dll', 'licenses/Microsoft.Web.WebView2.LICENSE.txt')) {
                 if ($null -eq $zip.GetEntry($required)) { throw "Missing runtime dependency or license in $($archive.Name): $required" }
             }
@@ -137,18 +141,18 @@ foreach ($archive in $archives) {
     finally { $zip.Dispose() }
 }
 
-function Copy-Archives([string]$Directory) {
+function Copy-Archives([string]$Directory, [object[]]$SelectedArchives) {
     [System.IO.Directory]::CreateDirectory($Directory) | Out-Null
     $lock = [System.IO.File]::Open((Join-Path $Directory '.heron-pack.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
     try {
         # Check the entire batch before adding anything to this destination.
-        foreach ($archive in $archives) {
+        foreach ($archive in $SelectedArchives) {
             $destination = Join-Path $Directory $archive.Name
             if ((Test-Path -LiteralPath $destination) -and (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $archive.Sha256) {
                 throw "Package version already contains different bytes: $destination. Use a new version. Archives retained at $staging"
             }
         }
-        foreach ($archive in $archives) {
+        foreach ($archive in $SelectedArchives) {
             $destination = Join-Path $Directory $archive.Name
             if (!(Test-Path -LiteralPath $destination)) { [System.IO.File]::Copy($archive.Source, $destination, $false) }
             if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $archive.Sha256) {
@@ -160,9 +164,10 @@ function Copy-Archives([string]$Directory) {
     finally { $lock.Dispose() }
 }
 
-if (!$ValidateOnly) { Copy-Archives $outputDirectory }
+if (!$ValidateOnly) { Copy-Archives $outputDirectory $archives }
 if (!$ValidateOnly -and ![string]::IsNullOrWhiteSpace($Feed)) {
-    Copy-Archives ([System.IO.Path]::GetFullPath($Feed, $PSScriptRoot))
+    $feedArchives = @($archives | Where-Object { $_.Id -in $feedPackageIds })
+    Copy-Archives ([System.IO.Path]::GetFullPath($Feed, $PSScriptRoot)) $feedArchives
 }
 
 $resolvedStaging = [System.IO.Path]::GetFullPath($staging)

@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="using:Heron.ClientFramework.Shell"
+             xmlns:primitives="using:Avalonia.Controls.Primitives"
+             x:Class="Heron.ClientFramework.Shell.PluginsPageView"
+             x:DataType="shell:PluginsPageViewModel"
+             x:CompileBindings="True">
+  <ScrollViewer>
+    <StackPanel Margin="20" Spacing="14">
+      <StackPanel Spacing="3">
+        <TextBlock Classes="textSectionTitle" Text="插件市场" />
+        <TextBlock Classes="textSecondary" Text="{Binding Message}" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <ItemsControl ItemsSource="{Binding Plugins}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <primitives:UniformGrid Columns="2" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="shell:PluginStatusRow">
+            <Border Background="{DynamicResource BgSurfaceSubtleBrush}"
+                    BorderBrush="{DynamicResource BorderDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="16"
+                    MinHeight="148"
+                    Margin="0,0,10,10">
+              <Grid RowDefinitions="Auto,*,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="12" RowSpacing="10">
+                <TextBlock Classes="textFieldLabel"
+                           Text="{Binding Name}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+                <ToggleSwitch Grid.Column="1"
+                              IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                              Command="{Binding ToggleCommand}"
+                              IsEnabled="{Binding !ToggleCommand.IsRunning}"
+                              OnContent=""
+                              OffContent=""
+                              VerticalAlignment="Center"
+                              AutomationProperties.Name="{Binding Name}" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                           Classes="textSecondary"
+                           Text="{Binding Description}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Top" />
+                <TextBlock Grid.Row="2" Classes="textSecondary" Text="{Binding StateText}" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Classes="textMeta"
+                           Text="{Binding DefaultText}" HorizontalAlignment="Right" />
+                <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Classes="textSecondary"
+                           IsVisible="{Binding HasError}" Text="{Binding Error}"
+                           Foreground="{DynamicResource DangerFgBrush}" TextWrapping="Wrap" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

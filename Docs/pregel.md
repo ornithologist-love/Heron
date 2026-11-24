@@ -1,11 +1,11 @@
 ---
 type: architecture
-covers: [Source/Pregel/**, Source/Pregel.Tooling/**, Source/Pregel.Scripting/**, Source/Pregel.Automation/**, Source/Pregel.Cli/**]
+covers: [Source/Pregel/**, Source/Pregel.Automation/**, Source/Pregel.Cli/**]
 ---
 
 # Heron Pregel
 
-Heron.Pregel 是独立的 .NET 图框架，拥有内核与 DSL、外部进程适配、CSX 装载、本地任务和独立 CLI。包、程序集和公开命名空间统一使用 Heron.Pregel 及相应后缀。框架只依赖 .NET 和公共包，不依赖产品源码、界面框架或私有服务。引擎设计见[引擎正文](pregel-engine.md)，用法见[编写范式](pregel-authoring.md)。
+Heron.Pregel 是独立的 .NET 图框架，拥有内核与 DSL、外部进程适配、CSX 装载、本地任务和独立 CLI。`Heron.Pregel` 包包含内核和 Tooling 适配层，`Heron.Pregel.Automation` 包包含本地任务和 Scripting 装载层。两层保留原有公开命名空间。框架只依赖 .NET 和公共包，不依赖产品源码、界面框架或私有服务。引擎设计见[引擎正文](pregel-engine.md)，用法见[编写范式](pregel-authoring.md)。
 
 ## 身份与宿主边界
 
@@ -14,6 +14,8 @@ Heron 0.3.0 使用单值流 DSL。升级宿主时应同时更新脚本及其共�
 AssemblyVersion 固定为 1.0.0.0，但程序集改名与命名空间改名仍会改变类型身份。图指纹、节点 ID 和编码器可能依赖这些身份，因此不能把改名描述为没有兼容风险。
 
 内核提供持久化名称映射，脚本层提供语法树级的名称转换。嵌入宿主在构图和装载脚本前登记自己的旧名称；用户源文件、字符串值、注释和内容 revision 不被重写。旧二进制插件需要按新程序集重新编译，源码转换不替代二进制兼容。
+
+Tooling 和 Scripting 类型在图指纹、节点 ID 和默认 JSON 编码器中沿用合并前的程序集身份，包含这些类型的泛型与数组也保持原有标识。CSX 装载器通过合并后的程序集提供原有命名空间。
 
 自动化宿主通过运行时接缝提供数据目录、脚本源、执行快照、计划归属与环境作用域。组织账号、发布审核、远程机器通信、AI 和通知渠道留在消费方，框架不包含产品专用的旧名称映射。
 

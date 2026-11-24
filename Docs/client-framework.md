@@ -1,6 +1,6 @@
 ---
 type: architecture
-covers: [Source/ClientFramework.Plugins/**, Source/ClientFramework.Abstractions/**, Source/ClientFramework.Runtime/**, Source/ClientFramework.Infrastructure/**, Source/ClientFramework.Shell/**, Source/Client.Host/**]
+covers: [Source/ClientFramework.Plugins/**, Source/ClientFramework.Abstractions/**, Source/ClientFramework.Desktop/**, Source/Client.Host/**]
 ---
 
 # ClientFramework plugin model
@@ -9,19 +9,21 @@ ClientFramework separates reusable plugin mechanisms from the product that hosts
 
 ## Boundaries
 
-The Infrastructure package ships the WebView2 Core interop and its license alongside its own assembly. This is a private manual reference rather than a transitive NuGet dependency: compiling the library from source copies it automatically, while packing only the library would omit a required runtime assembly. WPF and WinForms hosts are not included.
-
-`Heron.ClientFramework.Plugins` uses only the BCL. It owns package manifests, dependency resolution, editions, assembly isolation, version storage, enablement choices and assembly of already-built artifacts. It does not invoke compilers or know consumer repositories, native libraries or business features.
+`Heron.ClientFramework.Plugins` uses only the BCL. It owns package manifests, dependency resolution, editions, assembly isolation, version storage, enablement choices, assembly of already-built artifacts, and generic assembly CLI/macOS dev-bundle helpers (`ClientProductAssemblyCli`, `MacDevelopmentBundle`). It does not invoke compilers or know consumer repositories, native libraries or business features.
 
 `Heron.ClientFramework.Abstractions` contains the narrow desktop contracts for modules, pages, commands, status and optional host capabilities. It depends on the plugin model, Avalonia, MVVM and DI abstractions. Product copy, application-specific window policy and implementations of host capabilities belong to the consumer.
 
-`Heron.ClientFramework.Runtime` creates each plugin's private service provider, manages module lifetime and revocable registrations, resolves optional services through handles, and enumerates visible exported capabilities via `ImportVisible<T>()`. Hiding a product entry is distinct from stopping its module: the host can preserve running operations and restore presentation using the same instance.
+`Heron.ClientFramework.Desktop` delivers the runtime, desktop infrastructure and shell in `Heron.ClientFramework.Infrastructure.dll`. The existing infrastructure assembly identity remains available to plugins that consume shared desktop services. Runtime and shell code retain their C# namespaces. Hosts share the consolidated assembly through their host policies.
 
-`Heron.ClientFramework.Infrastructure` holds desktop services that have no product meaning: run logging and diagnostics, the live log window, native WebView environment, visibility, scaling and recovery, desktop notifications, folder and background-execution helpers, theme switching, single-instance locking with cross-process foreground activation (`SingleInstanceGuard` / `SingleInstanceOptions`), and window presence. Product identity and storage are not part of it. Before logging or WebView storage is used, the host calls `ClientHostProfile.Configure` once with its display name, log file prefix, log and cache directories and an optional theme persistence callback; using the services before that throws instead of writing to a guessed location. Product configuration, localisation and domain-specific controls stay in the consumer.
+The runtime creates each plugin's private service provider, manages module lifetime and revocable registrations, resolves optional services through handles, enumerates visible exported capabilities via `ImportVisible<T>()`, and writes the atomic JSON startup receipt for `--smoke-result` harnesses via `ClientSmokeRun`. A host can hide an entry, preserve running operations and restore presentation using the same plugin instance.
+
+Desktop infrastructure owns run logging, diagnostics, the live log window, native WebView environment and lifetime, font fallback, Velopack updates and install-root holder checks, desktop notifications, theme switching, Windows startup registration, single-instance activation and window presence. The host calls `ClientHostProfile.Configure` before using logging or WebView storage, supplying the display name, log file prefix, log and cache directories, and optional theme persistence callback. Product configuration, localisation and domain-specific controls stay in the consumer.
+
+The Desktop package ships the WebView2 Core interop and its license alongside the framework assembly. The manual reference copies the interop when building from source. The package includes it explicitly so NuGet consumers get the same runtime files.
 
 Logging defaults to Information, with Microsoft categories at Warning. `HERON_LOG_LEVEL` and `HERON_LOG_OVERRIDES` configure the process policy; product and plugin-specific defaults belong to the host through `ClientLogging.Levels`.
 
-`Heron.ClientFramework.Shell` holds the business-free parts of a host window that every host needs to show plugins: plugin-scoped presentation and navigation ports (a hidden plugin keeps its background lifetime and stops receiving page changes), plugin page view creation, keep-alive and release, sidebar navigation items, the merge of a saved sidebar order with the currently visible pages, shared desktop branding (`ShellBranding`), hosted diagnostics sub-windows (`ShellDiagnosticsWindow` / `ShellDiagnosticsManager`), and the system tray host (`ClientTrayHost`). `PluginPageHost` stacks mounted pages in one cell so inactive pages and native web views keep their state while only the active page is visible and hit-testable. It is not a plugin contract: plugins never reference it, so changing it does not change the host interface version.
+The shell gives hosts plugin-scoped presentation and navigation, page creation and lifetime, sidebar ordering, desktop branding, diagnostics and settings windows, multi-monitor placement, plugin settings, resource status and a system tray host. Hidden plugins keep their background lifetime and stop receiving page changes. `PluginPageHost` stacks mounted pages in one cell so inactive pages and native web views keep their state while only the active page is visible and hit-testable. Plugin authors consume the presentation contracts in Abstractions.
 
 ## Shell window
 
@@ -61,7 +63,7 @@ Contracts are shared through the host policy. A plugin cannot load a private cop
 
 ## Packaging policy and atomic delivery
 
-Native-file selection belongs to the consumer through `IPluginFileFilter`. Copying and cache validation use the same predicate, and its fingerprint participates in assembly reuse. The consumer changes the fingerprint when its rules change. Unfiltered standalone packages retain their complete inputs.
+Native-file selection belongs to the consumer through `IPluginFileFilter`; `PlatformRuntimeFileFilter` provides a built-in filter that drops `runtimes/<rid>/...` native payloads outside the target platform (`Win64`, `Mac`, `Linux`). Copying and cache validation use the same predicate, and its fingerprint participates in assembly reuse. The consumer changes the fingerprint when its rules change. Unfiltered standalone packages retain their complete inputs.
 
 Assembly reads built artifacts, verifies dependencies and the host interface, writes a sibling staging directory, then switches the product or plugin set. The temporary previous directory is part of rollback during the switch and is removed after success. It is not a retained backup. User data and plugin preferences are separate from generated product directories.
 

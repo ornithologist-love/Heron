@@ -30,6 +30,21 @@ namespace Heron.Pregel.Tests
                 "a namespace that only shares a prefix with a mapped name keeps its own identity");
         }
 
+        [Fact]
+        public void MovedToolingTypes_KeepTheirStoredIdentity()
+        {
+            var inputType = typeof(List<ArtifactSource[]>);
+            var formerTypeName = inputType.FullName!.Replace(
+                ", Heron.Pregel, Version=", ", Heron.Pregel.Tooling, Version=", StringComparison.Ordinal);
+            var graph = Pregel.Define<List<ArtifactSource[]>>("moved-tooling").Then(ObserveArtifacts).Compile();
+
+            graph.Compiled.Definition.Channels.Values.Should().Contain(
+                channel => channel.StateTypeId == $"{formerTypeName}, {inputType.Assembly.FullName}");
+            CheckpointCodecs.Json<List<ArtifactSource[]>>().CodecId.Should().Be("json:" + formerTypeName);
+        }
+
+        private static void ObserveArtifacts(List<ArtifactSource[]> _, PregelNodeContext context, CancellationToken token) { }
+
         private static CompiledPregelGraph Build(Action<PregelUnit, PregelNodeContext, CancellationToken> step) =>
             Pregel.Define<PregelUnit>("identity-probe").Then(step).Compile().Compiled;
     }

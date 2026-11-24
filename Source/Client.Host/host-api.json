@@ -2,10 +2,8 @@
   "host_api": "4.1",
   "shared_assemblies": [
     "Heron.ClientFramework.Abstractions",
-    "Heron.ClientFramework.Runtime",
     "Heron.ClientFramework.Infrastructure",
     "Heron.ClientFramework.Plugins",
-    "Heron.ClientFramework.Shell",
     "Heron.ClientControls",
     "CommunityToolkit.Mvvm",
     "Serilog"

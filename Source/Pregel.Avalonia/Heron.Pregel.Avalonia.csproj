@@ -10,7 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AutomationTenants/Heron.AutomationTenants.csproj" />
-    <ProjectReference Include="../ClientFramework.Infrastructure/Heron.ClientFramework.Infrastructure.csproj" />
+    <ProjectReference Include="../ClientFramework.Desktop/Heron.ClientFramework.Desktop.csproj" />
     <ProjectReference Include="../Client.Controls/Heron.ClientControls.csproj" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.AvaloniaEdit" />

@@ -2,6 +2,8 @@ using Heron.Pregel.Automation;
 using Heron.Pregel.Avalonia.ViewModels;
 using Heron.Pregel.Avalonia.Views;
 using System.Collections.ObjectModel;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FluentIcons.Common;
 using Heron.ClientFramework.Abstractions;
@@ -19,6 +21,7 @@ internal sealed partial class HostModel : ObservableObject, IAsyncDisposable
     private readonly ClientPluginHostCore _core;
     private readonly bool _pluginsAssembled = File.Exists(Path.Combine(AppContext.BaseDirectory, "edition.json"));
     private readonly AutomationHost _automation;
+    private readonly Bitmap _userAvatar;
     private AutomationPageViewModel? _automationPage;
     private AutomationPageView? _automationView;
     private IDisposable? _automationActivity;
@@ -55,11 +58,14 @@ internal sealed partial class HostModel : ObservableObject, IAsyncDisposable
         var settings = HostSettings.Load();
         State = new ShellState(pinned: settings.SidebarPinned,
             persistPinned: pinned => HostSettings.Update(s => s.SidebarPinned = pinned));
+        using var avatarAsset = AssetLoader.Open(new Uri("avares://Heron.ClientHost/Assets/heron-avatar.png"));
+        _userAvatar = new Bitmap(avatarAsset);
         var name = Environment.UserName;
         User = new ShellUser
         {
             DisplayName = name, AccountName = name, Organization = Environment.MachineName, Description = name,
             Initials = name.Length > 0 ? name[..1].ToUpperInvariant() : "?",
+            Avatar = _userAvatar,
         };
     }
 
@@ -164,5 +170,6 @@ internal sealed partial class HostModel : ObservableObject, IAsyncDisposable
         State.Dispose();
         await _core.DisposeAsync();
         await _automation.DisposeAsync();
+        _userAvatar.Dispose();
     }
 }

@@ -171,13 +171,17 @@ public static class PregelIdentity
     }
 }
 
-/// <summary>Roslyn CSX assembly names contain a fresh session GUID, including inside generic type names.</summary>
+/// <summary>Keeps persisted type identities stable across script sessions and framework assembly moves.</summary>
 internal static class PregelTypeIdentity
 {
     private static readonly System.Text.RegularExpressions.Regex ScriptAssembly = new(
         @"ℛ\*[^,\[\]]+", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static readonly System.Text.RegularExpressions.Regex MovedAssembly = new(
+        @"(?<![\w.])(?<type>(?<namespace>Heron\.Pregel\.(?:Tooling|Scripting))\.[\w.+`]+(?:\[[,*]*\])*), Heron\.Pregel(?:\.Automation)?(?=, Version=)",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
-    public static string Normalize(string name) => PregelIdentity.Apply(ScriptAssembly.Replace(name, "Pregel.Script"));
+    public static string Normalize(string name) => PregelIdentity.Apply(MovedAssembly.Replace(
+        ScriptAssembly.Replace(name, "Pregel.Script"), "${type}, ${namespace}"));
     public static string Qualified(Type type) => Normalize(type.AssemblyQualifiedName ?? type.FullName ?? type.Name);
 }
 

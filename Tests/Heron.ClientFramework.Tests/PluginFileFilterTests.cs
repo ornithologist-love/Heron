@@ -48,4 +48,30 @@ public sealed class PluginFileFilterTests
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
     }
+
+    [Fact]
+    public void Platform_runtime_filter_retains_only_target_platform_native_payloads()
+    {
+        var win64 = PlatformRuntimeFileFilter.ForPlatform("Win64");
+        Assert.True(win64.Include("runtimes/win-x64/native/p4bridge.dll"));
+        Assert.True(win64.Include("runtimes/win/native/foo.dll"));
+        Assert.True(win64.Include("runtimes/any/native/foo.dll"));
+        Assert.True(win64.Include("plugin.json"));
+        Assert.False(win64.Include("runtimes\\win-x86\\native\\p4bridge.dll"));
+        Assert.False(win64.Include("runtimes/linux-x64/native/libp4bridge.so"));
+        Assert.False(win64.Include("runtimes/linux-arm64/native/libp4bridge.so"));
+        Assert.False(win64.Include("runtimes/osx-u/native/libp4bridge.dylib"));
+
+        var mac = PlatformRuntimeFileFilter.ForPlatform("Mac");
+        Assert.True(mac.Include("runtimes/osx-u/native/libp4bridge.dylib"));
+        Assert.True(mac.Include("runtimes/osx-arm64/native/foo.dylib"));
+        Assert.False(mac.Include("runtimes/win-x64/native/p4bridge.dll"));
+
+        var linux = PlatformRuntimeFileFilter.ForPlatform("Linux");
+        Assert.True(linux.Include("runtimes/linux-x64/native/libp4bridge.so"));
+        Assert.False(linux.Include("runtimes/win-x64/native/p4bridge.dll"));
+
+        Assert.NotEqual(win64.Fingerprint, mac.Fingerprint);
+        Assert.NotEqual(mac.Fingerprint, linux.Fingerprint);
+    }
 }

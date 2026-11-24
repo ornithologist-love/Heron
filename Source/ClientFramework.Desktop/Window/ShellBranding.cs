@@ -13,7 +13,7 @@ namespace Heron.ClientFramework.Shell;
 /// </summary>
 public static class ShellBranding
 {
-    public static readonly Uri DefaultIconUri = new("avares://Heron.ClientFramework.Shell/Assets/heron-64.png");
+    public static readonly Uri DefaultIconUri = new("avares://Heron.ClientFramework.Infrastructure/Assets/heron-64-filled.png");
 
     private static readonly object Gate = new();
     private static bool _configured;

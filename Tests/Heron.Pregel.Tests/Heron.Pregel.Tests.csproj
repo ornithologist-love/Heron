@@ -27,7 +27,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../Source/Pregel/Heron.Pregel.csproj" />
-    <ProjectReference Include="../../Source/Pregel.Tooling/Heron.Pregel.Tooling.csproj" />
     <Compile Include="../Support/Anchor.cs" Link="Support/Anchor.cs" />
   </ItemGroup>
 

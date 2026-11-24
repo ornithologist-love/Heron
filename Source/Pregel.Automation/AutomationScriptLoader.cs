@@ -47,8 +47,7 @@ internal static class AutomationScriptLoader
         var options = ScriptOptions.Default.WithFilePath(path)
             .AddReferences(typeof(IAutomationTemplate).Assembly,
                 typeof(System.ComponentModel.DisplayNameAttribute).Assembly, typeof(Pregel).Assembly,
-                typeof(PregelScript).Assembly, typeof(ProcessExecution).Assembly, typeof(ProcessStartInfo).Assembly,
-                typeof(JsonElement).Assembly)
+                typeof(ProcessStartInfo).Assembly, typeof(JsonElement).Assembly)
             .AddReferences(AutomationRuntime.ScriptReferences)
             .AddReferences(references)
             .AddImports("System", "System.IO", "System.Linq", "System.Collections.Generic", "System.Threading",

@@ -13,7 +13,7 @@ ClientControls and Pregel Avalonia ship a generated character inventory in `buil
 
 The repository inherits the existing workspace conventions: source belongs in `Source`, durable documentation in `Docs`, process notes in ignored `.work`, and deliverables in the workspace's `Binaries/Heron`. Repository extraction changes ownership; it does not reset directory naming, layering, development or documentation rules.
 
-Libraries under `Source` opt into packing with `IsPackable=true` and use package IDs beginning with `Heron.`. The libraries are [ClientControls](client-controls.md), [ClientFramework](client-framework.md) (plugin model, abstractions, runtime, infrastructure and shell), [Pregel](pregel.md), [Pregel Avalonia](pregel-avalonia.md) and [AutomationTenants](automation-tenants.md). The independent Pregel CLI explicitly opts into .NET tool packaging; the Gallery and samples remain unpackable. An empty package inventory reports missing libraries instead of producing placeholder packages.
+Libraries under `Source` opt into packing with `IsPackable=true` and use package IDs beginning with `Heron.`. The Gallery and samples remain unpackable. The independent Pregel CLI builds as a .NET tool package named `Heron.Pregel.Cli`.
 
 ## Versions and source paths
 
@@ -41,7 +41,7 @@ pwsh -File ./Pack.ps1
 
 Use `pwsh -File ./Pack.ps1 -NuGetOnly` when preparing just the NuGet batch. Server artifacts are prepared independently with `-ServerOnly`.
 
-Packages are always collected in the output directory first. An explicit feed additionally receives the same archives. Relative paths resolve against this repository, independently of the caller's working directory:
+The output directory receives all packable projects, including the CLI tool. An explicit `-Feed` receives the nine consumer libraries listed in `FeedPackageIds`: `Heron.Core`, `Heron.ClientControls`, `Heron.ClientFramework.Plugins`, `Heron.ClientFramework.Abstractions`, `Heron.ClientFramework.Desktop`, `Heron.Pregel`, `Heron.Pregel.Automation`, `Heron.Pregel.Avalonia` and `Heron.AutomationTenants`. Relative paths resolve against this repository regardless of the caller's working directory:
 
 ```powershell
 pwsh -File ./Pack.ps1 -Feed ../Consumer/Packages/Heron

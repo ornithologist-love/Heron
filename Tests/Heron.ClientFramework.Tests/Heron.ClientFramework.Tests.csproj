@@ -7,9 +7,9 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../Source/Core/Heron.Core.csproj" />
     <ProjectReference Include="../../Source/ClientFramework.Plugins/Heron.ClientFramework.Plugins.csproj" />
-    <ProjectReference Include="../../Source/ClientFramework.Runtime/Heron.ClientFramework.Runtime.csproj" />
-    <ProjectReference Include="../../Source/ClientFramework.Shell/Heron.ClientFramework.Shell.csproj" />
+    <ProjectReference Include="../../Source/ClientFramework.Desktop/Heron.ClientFramework.Desktop.csproj" />
     <Compile Include="../Support/Anchor.cs" Link="Support/Anchor.cs" />
 
     <ProjectReference Include="../PluginFixtures/Contracts/Heron.ClientFramework.PluginProbe.Contracts.csproj" />

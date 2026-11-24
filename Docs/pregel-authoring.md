@@ -1,6 +1,6 @@
 ---
 type: guide
-covers: [Source/Pregel/Dsl/**, Source/Pregel/PregelGraph.cs, Source/Pregel.Scripting/PregelScript.cs]
+covers: [Source/Pregel/Dsl/**, Source/Pregel/PregelGraph.cs, Source/Pregel.Automation/Scripting/PregelScript.cs]
 ---
 
 # Pregel 编写范式
