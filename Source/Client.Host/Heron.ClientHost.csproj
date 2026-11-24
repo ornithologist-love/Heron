@@ -4,6 +4,7 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>Heron.ClientHost</AssemblyName>
     <RootNamespace>Heron.ClientHost</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <BaseOutputPath>$(MSBuildThisFileDirectory)../../../Binaries/Heron/ClientHost/</BaseOutputPath>
   </PropertyGroup>
