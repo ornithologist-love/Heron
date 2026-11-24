@@ -24,7 +24,7 @@ public class Avatar : TemplatedControl
         VerticalAlignment = VerticalAlignment.Center,
     };
 
-    private readonly Image _image = new() { Stretch = Stretch.UniformToFill };
+    private readonly Image _image = new() { Stretch = Stretch.UniformToFill, IsVisible = false };
     private readonly Border _circle = new() { ClipToBounds = true };
 
     public Avatar()
@@ -52,6 +52,17 @@ public class Avatar : TemplatedControl
     {
         get => GetValue(InitialsProperty);
         set => SetValue(InitialsProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == SourceProperty)
+        {
+            var hasImage = change.NewValue is not null;
+            _image.IsVisible = hasImage;
+            _initials.IsVisible = !hasImage;
+        }
     }
 
     protected override Size MeasureOverride(Size availableSize)
