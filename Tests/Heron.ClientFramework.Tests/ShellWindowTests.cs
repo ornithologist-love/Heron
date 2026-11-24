@@ -1,9 +1,35 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Avalonia.Threading;
 using FluentAssertions;
+using Heron.ClientFramework.Abstractions;
 using Heron.ClientFramework.Infrastructure;
+using Heron.ClientFramework.Runtime;
 using Heron.ClientFramework.Shell;
+using Semi.Avalonia;
 using Xunit;
 
 namespace Heron.ClientFramework.Tests;
+
+internal static class HeadlessAppSupport
+{
+    public static void EnsureInitialized()
+    {
+        if (Application.Current != null) return;
+        AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions())
+            .SetupWithoutStarting();
+        Application.Current!.Styles.Add(new SemiTheme());
+        Application.Current.Styles.Add(new StyleInclude(new Uri("avares://Heron.ClientControls/"))
+        {
+            Source = new Uri("avares://Heron.ClientControls/Themes/HeronTheme.axaml")
+        });
+    }
+}
 
 // ThemeService is process state; this class owns every test that changes it.
 [Collection(nameof(ShellWindowTests))]
@@ -74,5 +100,97 @@ public sealed class ShellWindowTests
             .Should().Equal("startup", "theme", "settings");
         ShellMenuSlots.Compose(Array.Empty<string>(), e => e == "theme", () => "theme")
             .Should().Equal("theme");
+    }
+
+    [Fact]
+    [Anchor("Docs/client-framework.md")]
+    public void ShellWindowAppliesShellBrandingTitleIconAndWindowIcon()
+    {
+        HeadlessAppSupport.EnsureInitialized();
+        using var bitmap = new WriteableBitmap(new PixelSize(16, 16), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+        var windowIcon = new WindowIcon(bitmap);
+        ShellBranding.Configure(windowIcon, bitmap);
+        try
+        {
+            var window = new ShellWindow();
+            window.Icon.Should().BeSameAs(windowIcon);
+            window.TitleIcon.Should().BeSameAs(bitmap);
+
+            using var overrideImage = new WriteableBitmap(new PixelSize(8, 8), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+            window.TitleIcon = overrideImage;
+            window.TitleIcon.Should().BeSameAs(overrideImage);
+        }
+        finally
+        {
+            ShellBranding.Configure(null, null);
+        }
+    }
+
+    [Fact]
+    [Anchor("Docs/client-framework.md")]
+    public async Task DiagnosticsManagerDeduplicatesWindowsAndReleasesPanelsOnShutdown()
+    {
+        HeadlessAppSupport.EnsureInitialized();
+        var owner = new ShellWindow();
+        owner.Show();
+        var source = new FakeDiagnosticsWindow();
+        var manager = new ShellDiagnosticsManager();
+        try
+        {
+            var first = manager.OpenOrShow("ai", source, owner);
+            var second = manager.OpenOrShow("ai", source, owner);
+            first.Should().BeSameAs(second);
+            source.OpenCount.Should().Be(1);
+            source.ClosedCount.Should().Be(0);
+
+            await manager.CloseAndReleaseAllAsync();
+            Dispatcher.UIThread.RunJobs();
+            source.ClosedCount.Should().Be(1);
+            manager.OpenKeys.Should().BeEmpty();
+        }
+        finally
+        {
+            owner.Close();
+        }
+    }
+
+    [Fact]
+    [Anchor("Docs/client-framework.md")]
+    public void RegistryImportVisibleFiltersHiddenOwners()
+    {
+        var registry = new ClientPluginRegistry();
+        var first = new FakeDiagnosticsWindow();
+        var second = new FakeDiagnosticsWindow();
+        using var reg1 = registry.Export<IClientDiagnosticsWindow>("alpha", "1.0.0", first);
+        using var reg2 = registry.Export<IClientDiagnosticsWindow>("beta", "1.0.0", second);
+
+        registry.ImportVisible<IClientDiagnosticsWindow>().Select(x => x.Owner).Should().Equal("alpha", "beta");
+
+        registry.SetHiddenOwners(["alpha"]);
+        registry.ImportVisible<IClientDiagnosticsWindow>().Select(x => x.Owner).Should().Equal("beta");
+    }
+
+    private sealed class FakeDiagnosticsWindow : IClientDiagnosticsWindow
+    {
+        public string Title => "Test Diagnostics";
+        public int OpenCount { get; private set; }
+        public int ClosedCount { get; private set; }
+
+        public IClientDiagnosticsPanel OpenPanel()
+        {
+            OpenCount++;
+            return new FakePanel();
+        }
+
+        public ValueTask ClosePanelAsync(IClientDiagnosticsPanel panel, CancellationToken cancellationToken)
+        {
+            ClosedCount++;
+            return ValueTask.CompletedTask;
+        }
+
+        private sealed class FakePanel : IClientDiagnosticsPanel
+        {
+            public Control View { get; } = new TextBlock { Text = "Panel" };
+        }
     }
 }

@@ -10,6 +10,8 @@ namespace Heron.ClientHost;
 
 public sealed partial class App : Application
 {
+    internal static SingleInstanceGuard? InstanceGuard;
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
@@ -18,8 +20,17 @@ public sealed partial class App : Application
         {
             ApplyStartupTheme();
             var model = new HostModel();
-            desktop.MainWindow = new HostWindow(model);
-            desktop.ShutdownRequested += async (_, _) => await model.DisposeAsync();
+            var window = new HostWindow(model);
+            desktop.MainWindow = window;
+            InstanceGuard?.SetActivationCallback(() => Dispatcher.UIThread.Post(() =>
+            {
+                if (desktop.MainWindow != null) SingleInstanceGuard.BringWindowToFront(desktop.MainWindow);
+            }));
+            desktop.ShutdownRequested += async (_, _) =>
+            {
+                await window.CloseDiagnosticsAsync();
+                await model.DisposeAsync();
+            };
             Dispatcher.UIThread.Post(async () =>
             {
                 await model.InitializeAsync();

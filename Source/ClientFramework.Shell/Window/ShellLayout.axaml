@@ -20,8 +20,18 @@
                     <fi:FluentIcon Icon="{Binding $parent[shell:ShellWindow].State.SidebarPinIcon}"
                                    IconVariant="Regular" IconSize="Size20" FontSize="20" Width="20" Height="20" />
                 </chrome:TitleBarButton>
-                <ContentPresenter Grid.Column="1" Content="{Binding $parent[shell:ShellWindow].TitleContent}"
-                                  HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                    <Image Grid.Column="0"
+                           Source="{Binding $parent[shell:ShellWindow].TitleIcon}"
+                           Width="22" Height="22" Stretch="Uniform"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           IsHitTestVisible="False"
+                           IsVisible="{Binding $parent[shell:ShellWindow].TitleIcon, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <ContentPresenter Grid.Column="1"
+                                      Content="{Binding $parent[shell:ShellWindow].TitleContent}"
+                                      HorizontalAlignment="Left" VerticalAlignment="Center" />
+                </Grid>
                 <chrome:TitleBarButton x:Name="ThemeButton" Grid.Column="2"
                                        IsVisible="{Binding $parent[shell:ShellWindow].ShowThemeButton}"
                                        ToolTip.Tip="{Binding $parent[shell:ShellWindow].State.ThemeText}">

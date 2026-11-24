@@ -8,6 +8,9 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Heron.ClientFramework.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../ClientFramework.Abstractions/Heron.ClientFramework.Abstractions.csproj" />
     <ProjectReference Include="../Client.Controls/Heron.ClientControls.csproj" />
     <PackageReference Include="Avalonia" />

@@ -19,13 +19,7 @@ public sealed class ThemeModeFlyoutTests
     [Anchor("Docs/client-controls.md")]
     public void OpeningThemeMenuShowsAllChoicesAndEmitsTheSelectedMode()
     {
-        AppBuilder.Configure<Application>().UseHeadless(new AvaloniaHeadlessPlatformOptions())
-            .SetupWithoutStarting();
-        Application.Current!.Styles.Add(new SemiTheme());
-        Application.Current.Styles.Add(new StyleInclude(new Uri("avares://Heron.ClientControls/"))
-        {
-            Source = new Uri("avares://Heron.ClientControls/Themes/HeronTheme.axaml")
-        });
+        HeadlessAppSupport.EnsureInitialized();
         var menu = new ThemeModeFlyout { SystemLabel = "Auto", LightLabel = "Day", DarkLabel = "Night" };
         var button = new TitleBarButton { Content = "Theme", Flyout = menu };
         var window = new Window { Width = 400, Height = 300, Content = button };

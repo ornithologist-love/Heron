@@ -69,6 +69,8 @@ internal sealed partial class HostModel : ObservableObject, IAsyncDisposable
     public ObservableCollection<PluginPageViewModel> MountedPages { get; } = new();
     public IReadOnlyList<ClientPluginStatus> Statuses => _registry.Statuses.Where(s => s.LeftContent == null).ToArray();
     public IReadOnlyList<ClientPluginStatus> LeftStatuses => _registry.Statuses.Where(s => s.LeftContent != null).ToArray();
+    public IReadOnlyList<(string Owner, IClientDiagnosticsWindow Window)> DiagnosticsWindows => _registry.ImportVisible<IClientDiagnosticsWindow>();
+    public event Action? DiagnosticsChanged;
 
     [ObservableProperty] private NavigationItemViewModel? _selectedNavigationItem;
     [ObservableProperty] private object? _pageContent;
@@ -117,6 +119,7 @@ internal sealed partial class HostModel : ObservableObject, IAsyncDisposable
     {
         OnPropertyChanged(nameof(Statuses));
         OnPropertyChanged(nameof(LeftStatuses));
+        DiagnosticsChanged?.Invoke();
         var visible = _registry.Pages;
         foreach (var id in _pages.Keys.Where(id => _registry.AllPages.All(p => p.Id != id)).ToArray())
         {

@@ -1,4 +1,5 @@
 using Avalonia;
+using Heron.ClientFramework.Infrastructure;
 
 namespace Heron.ClientHost;
 
@@ -20,7 +21,31 @@ internal static class Program
             return 2;
         }
         if (Options.Capture != null) return HostCapture.Run(Options.Capture, Options.Width);
-        return AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace()
-            .StartWithClassicDesktopLifetime([]);
+
+        SingleInstanceGuard? guard = null;
+        if (!Options.Smoke)
+        {
+            var executablePath = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "Heron.ClientHost");
+            var instance = SingleInstanceOptions.Create(
+                "Heron_ClientHost",
+                executablePath,
+                HostSettings.Root,
+                isolateDebug: true,
+                pidFileName: "heron-host.pid",
+                mainWindowTitle: "Heron");
+            if (!SingleInstanceGuard.TryAcquire(instance, out guard)) return 0;
+        }
+
+        App.InstanceGuard = guard;
+        try
+        {
+            return AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace()
+                .StartWithClassicDesktopLifetime([]);
+        }
+        finally
+        {
+            App.InstanceGuard = null;
+            guard?.Dispose();
+        }
     }
 }

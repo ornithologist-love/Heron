@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Chrome;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data;
+using Avalonia.Media;
 using Avalonia.Styling;
 
 namespace Heron.ClientFramework.Shell;
@@ -18,6 +19,9 @@ public class ShellWindow : Window
 {
     public static readonly StyledProperty<ShellState> StateProperty =
         AvaloniaProperty.Register<ShellWindow, ShellState>(nameof(State));
+
+    public static readonly StyledProperty<IImage?> TitleIconProperty =
+        AvaloniaProperty.Register<ShellWindow, IImage?>(nameof(TitleIcon));
 
     public static readonly StyledProperty<object?> TitleContentProperty =
         AvaloniaProperty.Register<ShellWindow, object?>(nameof(TitleContent));
@@ -79,6 +83,8 @@ public class ShellWindow : Window
     public ShellWindow()
     {
         SetCurrentValue(StateProperty, _defaultState);
+        if (ShellBranding.WindowIcon != null) Icon = ShellBranding.WindowIcon;
+        if (ShellBranding.TitleIcon != null) SetCurrentValue(TitleIconProperty, ShellBranding.TitleIcon);
         ExtendClientAreaToDecorationsHint = true;
         WindowDecorations = WindowDecorations.Full;
         ExtendClientAreaTitleBarHeightHint = 40;
@@ -98,6 +104,9 @@ public class ShellWindow : Window
     ///     the host and may outlive the window; the window disposes only the default one it created.
     /// </summary>
     public ShellState State { get => GetValue(StateProperty); set => SetValue(StateProperty, value); }
+
+    /// <summary>Optional brand icon placed between the sidebar pin button and <see cref="TitleContent" />.</summary>
+    public IImage? TitleIcon { get => GetValue(TitleIconProperty); set => SetValue(TitleIconProperty, value); }
 
     /// <summary>Brand area after the pin button: mark, product name, edition badge.</summary>
     public object? TitleContent { get => GetValue(TitleContentProperty); set => SetValue(TitleContentProperty, value); }
@@ -185,7 +194,7 @@ public class ShellWindow : Window
     }
 
     /// <summary>The application draws its own title; keep the standard caption buttons and drop full screen.</summary>
-    private static ControlTheme CreateDecorationsTheme()
+    internal static ControlTheme CreateDecorationsTheme()
     {
         var theme = new ControlTheme(typeof(WindowDrawnDecorations))
         {

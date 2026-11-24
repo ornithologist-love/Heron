@@ -28,9 +28,16 @@ public sealed class ClientPluginRegistry
     {
         var key = (owner.ToLowerInvariant(), typeof(T));
         if (!_exports.TryAdd(key, (version, service))) throw new InvalidOperationException($"Duplicate service {owner}/{typeof(T)}.");
-        return new Registration(() => _exports.Remove(key));
+        try { Changed?.Invoke(); } catch { _exports.Remove(key); throw; }
+        return new Registration(() => { _exports.Remove(key); Changed?.Invoke(); });
     }
     public IPluginService<T> ImportOptional<T>(string owner, string range) where T : class => new ServiceHandle<T>(this, owner.ToLowerInvariant(), Heron.ClientFramework.Plugins.PluginVersionRange.Parse(range));
+    public IReadOnlyList<(string Owner, T Service)> ImportVisible<T>() where T : class =>
+        _exports
+            .Where(entry => entry.Key.Item2 == typeof(T) && IsOwnerVisible(entry.Key.Item1))
+            .OrderBy(entry => entry.Key.Item1, StringComparer.OrdinalIgnoreCase)
+            .Select(entry => (entry.Key.Item1, (T)entry.Value.Service))
+            .ToArray();
     private sealed class ServiceHandle<T>(ClientPluginRegistry registry, string owner, Heron.ClientFramework.Plugins.PluginVersionRange range) : IPluginService<T> where T : class
     {
         public T? Value => registry._exports.TryGetValue((owner, typeof(T)), out var export)
