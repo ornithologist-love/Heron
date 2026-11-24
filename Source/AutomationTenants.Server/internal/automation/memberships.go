@@ -185,7 +185,7 @@ func (s *service) saveMemberships(change membershipChange) (machineMemberships, 
 		}
 		state := s.store.states[prior.TenantID]
 		for _, run := range state.Runs {
-			if strings.EqualFold(run.MachineName, name) && (!terminal(run.State) || !run.LogsComplete) {
+			if strings.EqualFold(run.MachineName, name) && (!terminal(run.State) || !run.LogsComplete || poolChildHoldsMachine(run)) {
 				return machineMemberships{}, fault(409, "这台机器还有未结束或未回传完毕的运行。")
 			}
 		}

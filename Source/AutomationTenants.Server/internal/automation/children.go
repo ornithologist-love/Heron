@@ -25,6 +25,10 @@ type subgraphHeader struct {
 	Input                json.RawMessage `json:"input"`
 	ResumeValue          json.RawMessage `json:"resume_value"`
 	ResumeInterruptID    string          `json:"resume_interrupt_id"`
+	Target               string          `json:"target"`
+	ResourceAdmission    *struct {
+		QueueDeadlineUTC *time.Time `json:"queue_deadline_utc"`
+	} `json:"resource_admission"`
 }
 
 // Go keeps the encoded runtime payload opaque. Canonical object encoding makes
@@ -163,12 +167,20 @@ func (s *service) createChild(request ChildRequest) (RemoteRun, error) {
 	if err != nil {
 		return RemoteRun{}, err
 	}
+	poolID, pull := strings.CutPrefix(target, "pool:")
+	if pull && (!safeID.MatchString(poolID) || header.Target != target) {
+		return RemoteRun{}, fault(400, "子图的机器池目标无效或与调用不一致。")
+	}
+	targetKey := strings.ToLower(target)
+	if pull {
+		targetKey = target
+	}
 	requestBytes, err := json.Marshal(struct {
 		Target     string            `json:"target"`
 		TaskID     string            `json:"task_id"`
 		Parameters map[string]string `json:"parameters"`
 		Subgraph   json.RawMessage   `json:"subgraph"`
-	}{strings.ToLower(target), request.TaskID, parameters(request.Parameters), invocation})
+	}{targetKey, request.TaskID, parameters(request.Parameters), invocation})
 	if err != nil {
 		return RemoteRun{}, err
 	}
@@ -226,11 +238,22 @@ func (s *service) createChild(request ChildRequest) (RemoteRun, error) {
 				return err
 			}
 		}
-		targetAssignment, err := s.assignMachine(target, assigned.TenantID)
-		if err != nil {
-			return fault(403, "子图目标机器必须属于父运行所在租户。")
+		tenant := s.config.tenantByID[assigned.TenantID]
+		targetName, targetPool := target, ""
+		if pull {
+			if !strings.EqualFold(tenant.ServerMachine, name) || !slices.ContainsFunc(tenant.Pools, func(pool poolConfig) bool {
+				return pool.ID == poolID && pool.PullSubgraphs
+			}) {
+				return fault(403, "只有租户服务器可向启用领单的机器池派发。")
+			}
+			targetName, targetPool = "", poolID
+		} else {
+			targetAssignment, err := s.assignMachine(target, assigned.TenantID)
+			if err != nil {
+				return fault(403, "子图目标机器必须属于父运行所在租户。")
+			}
+			targetPool = targetAssignment.PoolID
 		}
-		targetName := target
 		task := &Task{ID: request.TaskID, Name: request.TaskID}
 		if definition, ok := s.config.tenantByID[assigned.TenantID].taskDefinition(request.TaskID, ""); ok {
 			task.ID, task.Name, task.ConfigurationID = definition.ID, definition.Name, request.TaskID
@@ -240,18 +263,20 @@ func (s *service) createChild(request ChildRequest) (RemoteRun, error) {
 			task.ID, task.Name, task.ConfigurationID = parent.TaskID, parent.TaskName, request.TaskID
 		}
 		if !cancelRequested {
-			if s.config.tenantByID[assigned.TenantID].ResourceServerURL == "" {
+			if tenant.ResourceServerURL == "" {
 				return fault(409, "跨机器子图需要统一 Pregel 资源协调，请配置 resource_server_url。")
 			}
 			caller, exists := state.Machines[strings.ToLower(name)]
 			if !exists || !slices.Contains(caller.Capabilities, mutexCapability) {
 				return fault(409, "父运行所在机器尚不支持统一 Pregel 资源协调，请先升级 Agent。")
 			}
+		}
+		if !cancelRequested && !pull {
 			machine, exists := state.Machines[strings.ToLower(target)]
 			if !exists {
 				return fault(404, "目标机器尚未上报任务目录。")
 			}
-			if machine.PoolID != targetAssignment.PoolID {
+			if machine.PoolID != targetPool {
 				return fault(409, "目标机器的机器池归属已变更，请等待目录刷新。")
 			}
 			if !slices.Contains(machine.Capabilities, subgraphCapability) {
@@ -277,13 +302,16 @@ func (s *service) createChild(request ChildRequest) (RemoteRun, error) {
 			return err
 		}
 		now := time.Now().UTC()
-		result = RemoteRun{ID: hex.EncodeToString(key), TenantID: assigned.TenantID, PoolID: targetAssignment.PoolID,
+		result = RemoteRun{ID: hex.EncodeToString(key), TenantID: assigned.TenantID, PoolID: targetPool, PullFromPool: pull,
 			MachineName: targetName, TaskID: task.ID, TaskName: task.Name, Parameters: parameters(request.Parameters),
 			ConfigurationID: taskConfiguration(*task),
 			ScriptRevision:  task.ScriptRevision, Source: "cloud", State: "queued", Revision: 1, Detail: "等待目标机器接收子图",
 			CreatedAt: now, UpdatedAt: now, CreatedBy: parent.CreatedBy, ParentRunID: parent.ID, RootRunID: root.ID,
 			ParentLocalRunID: parent.LocalRunID, ChildRunID: header.ChildRunID, ParentNodeID: header.NodeID,
 			Subgraph: invocation, RequestHash: requestHash}
+		if pull {
+			result.Detail = "等待机器池空闲机器领单"
+		}
 		if cancelRequested {
 			// A cancellation can win the race with the first create. Keep its identity
 			// durable so a delayed original POST cannot enqueue the invocation later.
@@ -333,7 +361,18 @@ func (s *service) childForParent(id string, request ChildAccessRequest) (assignm
 func (s *service) getChild(id string, request ChildAccessRequest) (RemoteRun, error) {
 	s.store.mu.Lock()
 	defer s.store.mu.Unlock()
-	_, child, err := s.childForParent(id, request)
+	assigned, child, err := s.childForParent(id, request)
+	if err != nil || !poolChildExpired(child, time.Now().UTC()) {
+		return child, err
+	}
+	err = s.store.change(assigned.TenantID, func(state *tenantState) error {
+		failure := CancellationFailure{Code: "mutex_queue_timeout", Message: "等待空闲机器超时，未开始执行。"}
+		if err := requestChildStop(state, id, &failure); err != nil {
+			return err
+		}
+		child = state.Runs[id]
+		return nil
+	})
 	return child, err
 }
 

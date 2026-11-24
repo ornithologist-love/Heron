@@ -21,6 +21,14 @@ public sealed partial class RemoteAutomationAgent
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromMinutes(3));
             var draft = await _officialScripts.PrepareDeploymentAsync(request, server, timeout.Token);
+            var fingerprint = "";
+            if (request.RegisterGraph)
+            {
+                var task = draft.Task with { ScriptInputPath = OfficialInputPath(request.TaskId) };
+                automation.RegisterInvocationTask(task, task.Parameters, validateInvocation: false);
+                fingerprint = automation.GraphFingerprint(task.Id)
+                    ?? throw new InvalidOperationException("机器池流程缺少可用于领单的图指纹。");
+            }
             var savedView = automation.Tasks.FirstOrDefault(view => view.Task.Id == request.TaskId);
             var saved = savedView?.Task ?? draft.Task;
             var reason = !File.Exists(settings.CliExecutablePath) ? "当前安装缺少 CLI，请更新构建机包。"
@@ -33,6 +41,7 @@ public sealed partial class RemoteAutomationAgent
                 Name = saved.DisplayName, Parameters = saved.Parameters,
                 Triggers = savedView == null ? null : TriggersOf(saved),
                 ScriptRevision = automation.Scripts.SavedScriptRevision(draft.Task.TemplateId),
+                GraphFingerprint = fingerprint,
                 CanRun = reason.Length == 0, UnavailableReason = reason
             };
         }

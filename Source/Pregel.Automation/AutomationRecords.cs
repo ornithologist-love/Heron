@@ -150,6 +150,9 @@ public sealed partial class AutomationStore(string root)
     // All document/history read-modify-write operations share a process-independent gate.
     public IDisposable BeginUpdate(TimeSpan? timeout = null)
     {
+        if (!OperatingSystem.IsWindows())
+            return AutomationUpdateLock.AcquireFile(Path.Combine(root, ".store.lock"), timeout ?? TimeSpan.FromSeconds(15),
+                "自动化存储忙，请稍后重试");
         var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(root).ToUpperInvariant())));
         var mutex = new Mutex(false, AutomationRuntime.StoreMutexPrefix + key);
         try

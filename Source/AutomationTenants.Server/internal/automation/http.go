@@ -117,6 +117,18 @@ func (s *service) route(w http.ResponseWriter, r *http.Request) (any, error) {
 	team := r.Header.Get(s.config.Protocol.AccessHeader) == "team"
 	tenant := r.URL.Query().Get("tenant_id")
 	switch {
+	case strings.HasPrefix(path, "/internal/automation/children/") && r.Method == http.MethodPost:
+		parts := strings.Split(strings.TrimPrefix(path, "/internal/automation/children/"), "/")
+		if len(parts) == 2 && parts[1] == "archive" {
+			return s.receivePoolArchive(parts[0], r, false)
+		}
+		if len(parts) == 2 && parts[1] == "release" {
+			var request ChildAccessRequest
+			if err := readJSON(w, r, &request); err != nil {
+				return nil, err
+			}
+			return s.releasePoolChild(parts[0], request)
+		}
 	case path == "/internal/machine-memberships" && r.Method == http.MethodGet:
 		return s.membershipView(), nil
 	case path == "/internal/machine-memberships" && r.Method == http.MethodPost:
@@ -240,6 +252,21 @@ func (s *service) route(w http.ResponseWriter, r *http.Request) (any, error) {
 		}
 		if len(parts) == 2 && parts[1] == "logs" {
 			return s.childLogs(parts[0], request)
+		}
+	case strings.HasPrefix(path, agent+"/pool-evidence/") && r.Method == http.MethodPost:
+		parts := strings.Split(strings.TrimPrefix(path, agent+"/pool-evidence/"), "/")
+		if len(parts) == 4 && parts[1] == "packages" {
+			return s.poolPackage(parts[0], r.URL.Query().Get("machine_name"), parts[2], parts[3])
+		}
+		if len(parts) == 2 && parts[1] == "archive" {
+			return s.receivePoolArchive(parts[0], r, true)
+		}
+		if len(parts) == 2 && parts[1] == "cleanup" {
+			var request ChildAccessRequest
+			if err := readJSON(w, r, &request); err != nil {
+				return nil, err
+			}
+			return s.markPoolCleanup(parts[0], request, true)
 		}
 	case strings.HasPrefix(path, agent+"/inspections/") && r.Method == http.MethodPost:
 		var report InspectionReport

@@ -93,6 +93,7 @@ public sealed record RemoteAutomationDeployment
     public string Id { get; init; } = "";
     public string TaskId { get; init; } = "";
     public string? CatalogPath { get; init; }
+    public bool RegisterGraph { get; init; }
     public RemoteAutomationDeploymentSource Source { get; init; } = new();
 }
 
@@ -149,6 +150,7 @@ public sealed record RemoteAutomationObservationReceipt(string Id);
 
 public sealed record RemoteAutomationRequest
 {
+    public bool PullFromPool { get; init; }
     public string? TenantId { get; init; }
     public bool ResourceCoordinationEnabled { get; init; }
     public string? DeploymentCatalogPath { get; init; }

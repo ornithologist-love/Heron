@@ -21,7 +21,7 @@ Pregel 与 Pregel.Automation 包携带各自的 API 源码，供消费方按锁�
 
 脚本所在的包目录与执行快照不是可写位置。每轮运行的产物写节点上下文的 `WorkingDirectory`，持久缓存（编译出的工具等）通过 `AutomationScriptStorage.CacheDirectory` 取得：宿主可把已安装或已准入的脚本映射到包外的缓存目录，没有映射的本地脚本使用自身被排除在内容哈希之外的 `.cache`。宿主还可为步骤错误追加说明，例如把写包目录导致的拒绝访问指向正确位置；一次运行开始时通知宿主它使用的快照，供保留策略按最近使用计算。
 
-远程派发与资源传输由 [AutomationTenants](automation-tenants.md) 组合本地宿主；每个宿主独立提供外部日历归属。存储互斥身份由嵌入方配置，使同一数据目录中的新旧执行进程继续使用同一个锁；产品身份和旧任务格式升级仍由嵌入方维护。
+远程派发与资源传输由 [AutomationTenants](automation-tenants.md) 组合本地宿主；每个宿主独立提供外部日历归属。同一数据目录的写入跨进程互斥。Windows 使用嵌入方配置的命名锁，Linux 使用本地数据目录中的文件锁；产品身份和旧任务格式升级仍由嵌入方维护。
 
 独立 CLI 命令为 heron-pregel，其构建输出位于工作区 Binaries/Heron/Pregel.Cli，也可按 .NET tool 安装。HERON_PREGEL_HOME 选择数据根，默认使用用户目录下的 .heron-pregel；框架直接使用 Heron.Pregel 身份，不登记前产品名称的兼容别名。
 

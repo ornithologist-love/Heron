@@ -17,6 +17,7 @@ import (
 type poolConfig struct {
 	Pool
 	MachineNames      []string `json:"machine_names"`
+	PullSubgraphs     bool     `json:"pull_subgraphs,omitempty"`
 	LegacyMaxParallel int      `json:"max_parallel"`
 }
 
@@ -29,6 +30,7 @@ type tenantConfig struct {
 	DefaultPool           string   `json:"default_pool"`
 	ServerMachine         string   `json:"server_machine"`
 	ResourceServerURL     string   `json:"resource_server_url"`
+	PoolPackageDirectory  string   `json:"pool_package_directory,omitempty"`
 	// ScriptSourceURL selects this tenant's published catalog (for example an eval question bank);
 	// empty means the global script_source_url.
 	ScriptSourceURL string            `json:"script_source_url,omitempty"`
@@ -168,6 +170,9 @@ func loadConfig(filename string) (config, error) {
 			}
 			tenant.ResourceServerURL = strings.TrimRight(address.String(), "/")
 		}
+		if tenant.PoolPackageDirectory != "" && !filepath.IsAbs(tenant.PoolPackageDirectory) {
+			tenant.PoolPackageDirectory = filepath.Join(filepath.Dir(filename), tenant.PoolPackageDirectory)
+		}
 		if tenant.ScriptSourceURL == "" {
 			tenant.ScriptSourceURL = c.ScriptSourceURL
 		} else if !validSourceURL(tenant.ScriptSourceURL) {
@@ -187,6 +192,9 @@ func loadConfig(filename string) (config, error) {
 			if pool.LegacyMaxParallel != 0 {
 				return c, fmt.Errorf("租户 %s 机器池 %s 的 max_parallel 已停用；请将容量约束迁入 Pregel MutexRule，并移除该字段或设为 0", tenant.ID, pool.ID)
 			}
+			if pool.PullSubgraphs && (len(pool.MachineNames) == 0 || tenant.ServerMachine == "" || tenant.ResourceServerURL == "") {
+				return c, fmt.Errorf("租户 %s 机器池 %s 启用领单需要显式评测机、服务器宿主和资源服务", tenant.ID, pool.ID)
+			}
 			pools[pool.ID] = true
 			if pool.Name == "" {
 				pool.Name = pool.ID
@@ -196,6 +204,9 @@ func loadConfig(filename string) (config, error) {
 				name, err = machineName(name)
 				if err != nil {
 					return c, errors.New("machine_names 配置无效")
+				}
+				if pool.PullSubgraphs && strings.EqualFold(name, tenant.ServerMachine) {
+					return c, fmt.Errorf("租户 %s 的服务器宿主不能在领单机器池 %s 内", tenant.ID, pool.ID)
 				}
 				key := strings.ToLower(name)
 				if _, exists := c.assignments[key]; exists {

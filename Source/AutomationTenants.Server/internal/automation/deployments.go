@@ -28,10 +28,11 @@ type DeploymentSource struct {
 }
 
 type DeploymentRequest struct {
-	ID          string           `json:"id"`
-	TaskID      string           `json:"task_id"`
-	Source      DeploymentSource `json:"source"`
-	CatalogPath string           `json:"catalog_path,omitempty"`
+	ID            string           `json:"id"`
+	TaskID        string           `json:"task_id"`
+	Source        DeploymentSource `json:"source"`
+	CatalogPath   string           `json:"catalog_path,omitempty"`
+	RegisterGraph bool             `json:"register_graph,omitempty"`
 }
 
 type Deployment struct {
@@ -49,10 +50,11 @@ type Deployment struct {
 }
 
 type DeployRequest struct {
-	TenantID    string `json:"tenant_id,omitempty"`
-	MachineName string `json:"machine_name"`
-	TaskID      string `json:"task_id"`
-	RequestID   string `json:"request_id"`
+	TenantID      string `json:"tenant_id,omitempty"`
+	MachineName   string `json:"machine_name"`
+	TaskID        string `json:"task_id"`
+	RequestID     string `json:"request_id"`
+	RegisterGraph bool   `json:"register_graph,omitempty"`
 }
 
 type DeploymentReport struct {
@@ -122,8 +124,8 @@ func (s *service) deploymentSource(ctx context.Context, tenant tenantConfig, tas
 func deploymentRetry(state *tenantState, actor string, request DeployRequest) (Deployment, bool, error) {
 	for _, job := range state.Deployments {
 		if job.CreatedBy == actor && job.RequestID == request.RequestID {
-			if job.TaskID != request.TaskID || !strings.EqualFold(job.MachineName, request.MachineName) {
-				return Deployment{}, false, fault(409, "request_id 已用于不同部署；重试必须保留目标与流程。")
+			if job.TaskID != request.TaskID || job.RegisterGraph != request.RegisterGraph || !strings.EqualFold(job.MachineName, request.MachineName) {
+				return Deployment{}, false, fault(409, "request_id 已用于不同部署；重试必须保留目标、流程和登记方式。")
 			}
 			return job, true, nil
 		}
@@ -134,6 +136,9 @@ func deploymentRetry(state *tenantState, actor string, request DeployRequest) (D
 func (s *service) putDeployment(state *tenantState, tenant tenantConfig, actor string, request DeployRequest, source DeploymentSource) (Deployment, error) {
 	if previous, found, err := deploymentRetry(state, actor, request); found || err != nil {
 		return previous, err
+	}
+	if request.RegisterGraph && tenant.PoolPackageDirectory == "" {
+		return Deployment{}, fault(400, "此租户尚未配置机器池题包目录。")
 	}
 	machine, ok := state.Machines[strings.ToLower(request.MachineName)]
 	if !ok {
@@ -156,7 +161,7 @@ func (s *service) putDeployment(state *tenantState, tenant tenantConfig, actor s
 		return Deployment{}, err
 	}
 	now := time.Now().UTC()
-	job := Deployment{DeploymentRequest: DeploymentRequest{ID: hex.EncodeToString(id), TaskID: request.TaskID, Source: source},
+	job := Deployment{DeploymentRequest: DeploymentRequest{ID: hex.EncodeToString(id), TaskID: request.TaskID, Source: source, RegisterGraph: request.RegisterGraph},
 		TenantID: tenant.ID, PoolID: machine.PoolID, MachineName: machine.MachineName, RequestID: request.RequestID,
 		CreatedBy: actor, State: "queued", Detail: "等待目标 Agent 拉取并准备流程", CreatedAt: now, UpdatedAt: now}
 	if state.Deployments == nil {
@@ -239,6 +244,11 @@ func (s *service) reportDeployment(id string, report DeploymentReport) (Deployme
 		if report.State == "ready" {
 			if report.Task == nil || report.Task.ID != job.TaskID {
 				return fault(400, "就绪回执缺少对应流程目录。")
+			}
+			if job.RegisterGraph && report.Task.GraphFingerprint == "" {
+				job.State, job.Detail, job.UpdatedAt = "failed", "部署未上报机器池所需的图指纹。", time.Now().UTC()
+				state.Deployments[id], result = job, job
+				return nil
 			}
 			poll := PollRequest{Tasks: []Task{*report.Task}}
 			if err := validatePoll(&poll); err != nil {

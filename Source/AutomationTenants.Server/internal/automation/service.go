@@ -443,10 +443,10 @@ func (s *service) pollAssigned(name string, assignment assignment, request PollR
 	if strings.EqualFold(name, tenant.ServerMachine) && !slices.Contains(request.Capabilities, serverCapability) {
 		return PollReply{}, fault(409, "配置的服务器必须以 Pregel 父图宿主模式接入。")
 	}
-	var pool Pool
+	var pool poolConfig
 	for _, candidate := range tenant.Pools {
 		if candidate.ID == assignment.PoolID {
-			pool = candidate.Pool
+			pool = candidate
 		}
 	}
 	reply := PollReply{TenantID: assignment.TenantID, PoolID: assignment.PoolID,
@@ -455,6 +455,10 @@ func (s *service) pollAssigned(name string, assignment assignment, request PollR
 	now := time.Now().UTC()
 	request.Tasks = tenant.normalizeTasks(request.Tasks)
 	machine := Machine{tenant.ID, pool.ID, name, request.HostVersion, request.Capabilities, request.Tasks, now}
+	claim, err := s.poolClaim(tenant, pool, machine)
+	if err != nil {
+		return PollReply{}, err
+	}
 	apply := func(state *tenantState) error {
 		state.Machines[strings.ToLower(name)] = machine
 		adoptSchedules(state, machine, now)
@@ -467,6 +471,10 @@ func (s *service) pollAssigned(name string, assignment assignment, request PollR
 			return runs[i].CreatedAt.Before(runs[j].CreatedAt)
 		})
 		for _, run := range runs {
+			if run.ID == claim.ID {
+				run = claim
+				state.Runs[run.ID] = run
+			}
 			if !strings.EqualFold(run.MachineName, name) || run.PoolID != pool.ID {
 				continue
 			}
@@ -518,7 +526,8 @@ func (s *service) pollAssigned(name string, assignment assignment, request PollR
 					catalogPath = agentCatalogPath(tenant, request.Capabilities)
 				}
 				reply.Requests = append(reply.Requests, RunRequest{ID: run.ID, TaskID: runConfiguration(run), Parameters: run.Parameters,
-					TenantID: tenant.ID, DeploymentCatalogPath: catalogPath, ResourceCoordinationEnabled: tenant.ResourceServerURL != "",
+					PullFromPool: run.PullFromPool,
+					TenantID:     tenant.ID, DeploymentCatalogPath: catalogPath, ResourceCoordinationEnabled: tenant.ResourceServerURL != "",
 					DeploymentSource: source, CancelRequested: run.CancelRequested, State: run.State, Subgraph: run.Subgraph, CancellationFailure: run.CancellationFailure, ScheduledFor: run.ScheduledFor})
 			}
 		}
@@ -527,8 +536,7 @@ func (s *service) pollAssigned(name string, assignment assignment, request PollR
 	// Most polls only prove the machine is still there. Those update memory alone: rewriting the
 	// whole tenant state for every machine every two seconds is what saturates the server.
 	seen := tenant.ID + "/" + strings.ToLower(name)
-	var err error
-	if heartbeatOnly(s.store.states[tenant.ID], machine) && now.Sub(s.store.seenOnDisk[seen]) <= heartbeatPersist {
+	if claim.ID == "" && heartbeatOnly(s.store.states[tenant.ID], machine) && now.Sub(s.store.seenOnDisk[seen]) <= heartbeatPersist {
 		err = apply(s.store.states[tenant.ID])
 	} else if err = s.store.change(tenant.ID, apply); err == nil {
 		s.store.seenOnDisk[seen] = now

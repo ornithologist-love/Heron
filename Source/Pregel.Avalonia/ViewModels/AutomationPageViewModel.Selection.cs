@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -59,9 +60,32 @@ public sealed partial class AutomationPageViewModel
     private void ToggleRunStep(AutomationStepItemViewModel? step)
     {
         if (!IsSelectingSteps || step is not { CanSelectForRun: true }) return;
-        if (!_stepSelection.Remove(step.Key)) _stepSelection.Add(step.Key);
-        step.IsRunSelected = _stepSelection.Contains(step.Key);
+        if (step.IsStage && step.Children.Count > 0)
+        {
+            var selectAll = !_stepSelection.Contains(step.Key);
+            SetSelected(step, selectAll);
+            foreach (var child in step.Children.Where(c => c.CanSelectForRun))
+                SetSelected(child, selectAll);
+        }
+        else
+        {
+            var select = !_stepSelection.Contains(step.Key);
+            SetSelected(step, select);
+            if (step.ParentStage is { } parent)
+            {
+                var selectable = parent.Children.Where(c => c.CanSelectForRun).ToArray();
+                var allSelected = selectable.Length > 0 && selectable.All(c => _stepSelection.Contains(c.Key));
+                SetSelected(parent, allSelected);
+            }
+        }
         NotifyStepSelection();
+    }
+
+    private void SetSelected(AutomationStepItemViewModel item, bool selected)
+    {
+        if (selected) _stepSelection.Add(item.Key);
+        else _stepSelection.Remove(item.Key);
+        item.IsRunSelected = selected;
     }
 
     [RelayCommand]

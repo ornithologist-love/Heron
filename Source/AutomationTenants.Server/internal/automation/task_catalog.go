@@ -178,6 +178,15 @@ func (s *store) applyTaskCatalog(tenant tenantConfig, state *tenantState) error 
 		machine.Tasks = tenant.normalizeTasks(machine.Tasks)
 		state.Machines[key] = machine
 	}
+	protected := map[string]bool{}
+	for _, run := range state.Runs {
+		if !run.PullFromPool || terminal(run.State) && !poolChildHoldsMachine(run) {
+			continue
+		}
+		for ancestor := run; ancestor.ID != "" && !protected[ancestor.ID]; ancestor = state.Runs[ancestor.ParentRunID] {
+			protected[ancestor.ID] = true
+		}
+	}
 	for id, run := range state.Runs {
 		local := runConfiguration(run)
 		definitionID := ""
@@ -191,6 +200,9 @@ func (s *store) applyTaskCatalog(tenant tenantConfig, state *tenantState) error 
 			definition, ok = tenant.taskDefinition(run.TaskID, "")
 		}
 		if !ok {
+			if protected[id] {
+				continue
+			}
 			state.IgnoredRuns[id] = run.MachineName
 			delete(state.Runs, id)
 			continue

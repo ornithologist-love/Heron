@@ -65,6 +65,23 @@ public sealed class ProtocolBoundaryTests
         received.RootGraphFingerprint.Should().Be(root.Definition.Fingerprint);
     }
 
+    [Fact]
+    public async Task A_pool_delivery_runs_on_its_bound_target_and_replays_its_typed_output()
+    {
+        var (root, request) = Invocation();
+        var engine = new PregelEngine(new InMemoryPregelCheckpointStore());
+        var options = new PregelRunOptions { ExecutionMachine = "mock-machine" };
+        var originalTarget = request with { Target = "pool:workers" };
+        var unbound = async () => await engine.RunSubgraphAsync(root, originalTarget, options);
+        await unbound.Should().ThrowAsync<PregelException>();
+
+        var result = await engine.RunSubgraphAsync(root, request, options);
+        result.Status.Should().Be(PregelRunStatus.Completed);
+        result.Output.Should().NotBeNull();
+        var replay = await engine.RunSubgraphAsync(root, request, options);
+        replay.Should().BeEquivalentTo(result);
+    }
+
     private static (CompiledPregelGraph Root, PregelSubgraphExecutionRequest Request) Invocation()
     {
         var child = Graph.Define<MockInput>("mock-child").Then(Transform).Compile();

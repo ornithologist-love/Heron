@@ -79,7 +79,10 @@ type RemoteRun struct {
 	CancellationFailure *CancellationFailure `json:"cancellation_failure,omitempty"`
 	Control             *RunControl          `json:"control,omitempty"`
 	// The team schedule occurrence this run was dispatched for.
-	ScheduledFor *time.Time `json:"scheduled_for,omitempty"`
+	ScheduledFor    *time.Time          `json:"scheduled_for,omitempty"`
+	PullFromPool    bool                `json:"pull_from_pool,omitempty"`
+	ArchiveSHA256   string              `json:"archive_sha256,omitempty"`
+	ReceivedArchive *poolArchiveReceipt `json:"received_archive,omitempty"`
 }
 
 // A failure decided by the parent Pregel runtime, not by Go's transport queue.
@@ -133,6 +136,7 @@ type PollRequest struct {
 }
 
 type RunRequest struct {
+	PullFromPool                bool                 `json:"pull_from_pool,omitempty"`
 	TenantID                    string               `json:"tenant_id,omitempty"`
 	ResourceCoordinationEnabled bool                 `json:"resource_coordination_enabled,omitempty"`
 	DeploymentCatalogPath       string               `json:"deployment_catalog_path,omitempty"`
@@ -164,6 +168,7 @@ type ChildAccessRequest struct {
 	ParentLocalRunID string               `json:"parent_local_run_id"`
 	After            int64                `json:"after"`
 	Limit            int                  `json:"limit"`
+	ArchiveSHA256    string               `json:"archive_sha256,omitempty"`
 	Failure          *CancellationFailure `json:"failure,omitempty"`
 }
 

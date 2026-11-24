@@ -83,6 +83,7 @@ public sealed class RemoteSubgraphExecutor(AutomationHost host, AutomationRunCon
         DateTimeOffset? stoppingAt = null;
         var connected = true;
         string? lastState = null;
+        string? targetMachine = request.Target.StartsWith("pool:", StringComparison.Ordinal) ? null : request.Target;
         while (true)
         {
             var stopping = cancellationToken.IsCancellationRequested || finalizationCancellationToken.IsCancellationRequested;
@@ -99,12 +100,12 @@ public sealed class RemoteSubgraphExecutor(AutomationHost host, AutomationRunCon
 
             try
             {
-                if (journal.QueueFailure == null && !journal.QueueGranted
+                if (targetMachine != null && journal.QueueFailure == null && !journal.QueueGranted
                     && invocation.ResourceAdmission is { QueueDeadlineUtc: { } deadline } admission
                     && DateTimeOffset.UtcNow >= deadline)
                 {
                     var resource = await resources.ExpireAsync(admission.RequestId, request.ChildRunId, deadline,
-                        request.Target, invocation.ParentResourceContext, stopLifetime.Token);
+                        targetMachine, invocation.ParentResourceContext, stopLifetime.Token);
                     if (resource.State is "granted" or "releasing" or "released") journal.QueueGranted = true;
                     else if (resource.State is "timed_out" or "failed")
                         journal.QueueFailure = resource.Error ?? new("mutex_queue_timeout", "子图等待资源超时，未开始执行。");
@@ -137,9 +138,11 @@ public sealed class RemoteSubgraphExecutor(AutomationHost host, AutomationRunCon
                     }, stopLifetime.Token);
                     journal.RemoteId = run.Id;
                     Save(path, journal);
-                    Notify(observer, request, "subgraph.dispatched", $"子图已派发到 {request.Target}", run.Id);
+                    Notify(observer, request, "subgraph.dispatched", $"子图目标：{request.Target}", run.Id);
                 }
                 else run = await PostAsync<ChildRun>("children/" + journal.RemoteId, Owner(), stopLifetime.Token);
+
+                if (!string.IsNullOrEmpty(run.MachineName)) targetMachine = run.MachineName;
 
                 if (stopping && !journal.StopSent)
                 {
@@ -172,13 +175,13 @@ public sealed class RemoteSubgraphExecutor(AutomationHost host, AutomationRunCon
                 if (run.State is "failed" or "skipped" && run.LogsComplete)
                     return childResult is { Status: PregelRunStatus.Failed } ? childResult
                         : new(request.ChildRunId, PregelRunStatus.Failed,
-                            Error: new("remote_subgraph_failed", run.Detail.Length > 0 ? run.Detail : "远端子图执行失败。"));
+                            Error: run.CancellationFailure ?? new("remote_subgraph_failed", run.Detail.Length > 0 ? run.Detail : "远端子图执行失败。"));
                 if (run.State == "unknown")
                     return new(request.ChildRunId, PregelRunStatus.Interrupted,
                         Error: new("remote_subgraph_unknown", "远端已无法确认子图结果；保留原调用，未重新派发。"));
                 if (run.State == "awaiting_review" && !stopping)
                 {
-                    var reason = $"子图在 {request.Target} 等待处理。请在目标机器完成审核或收尾，再继续父图。";
+                    var reason = $"子图在 {targetMachine ?? request.Target} 等待处理。请在目标机器完成审核或收尾，再继续父图。";
                     return childResult is { Status: PregelRunStatus.FinalizationPending }
                         ? childResult
                         : new(request.ChildRunId, PregelRunStatus.Interrupted,
@@ -370,7 +373,7 @@ public sealed class RemoteSubgraphExecutor(AutomationHost host, AutomationRunCon
     }
     private sealed record FailedChildStop(string Server, string RemoteId, JsonElement Create, JsonElement Stop);
     private sealed record ChildRun(string Id, string State, string Detail, bool LogsComplete,
-        PregelEncodedValue? Output, JsonElement? Snapshot);
+        PregelEncodedValue? Output, JsonElement? Snapshot, string? MachineName, PregelError? CancellationFailure);
     private sealed record LogLine(long Sequence, string Raw, string Text);
     private sealed record LogPage(LogLine[] Lines, long NextCursor, bool HasMore);
 }

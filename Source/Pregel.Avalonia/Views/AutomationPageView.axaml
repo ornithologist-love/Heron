@@ -22,7 +22,7 @@
               ToolTip.Tip="{Binding ToolTipText}">
         <Panel>
           <Grid Margin="12,0,8,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Panel VerticalAlignment="Center">
               <CheckBox Classes="runSelect" MinWidth="0" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="选择运行此步骤"
                         ToolTip.Tip="勾选后只运行所选步骤，其余本次跳过" IsChecked="{Binding IsRunSelected, Mode=OneWay}"
                         Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).ToggleRunStepCommand}" CommandParameter="{Binding}">
@@ -36,8 +36,15 @@
               <fi:FluentIcon Classes="stateIcon" Icon="{Binding StateIcon}" IconSize="Size16"
                              Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}" Classes.review="{Binding IsReview}"
                              Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}" Classes.cancelled="{Binding IsCancelled}"
-                             Classes.reused="{Binding IsReused}" />
-            </StackPanel>
+                             Classes.reused="{Binding IsReused}">
+                <fi:FluentIcon.IsVisible>
+                  <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                    <Binding Path="!$parent[UserControl].((vm:AutomationPageViewModel)DataContext).IsSelectingSteps" />
+                    <Binding Path="!CanSelectForRun" />
+                  </MultiBinding>
+                </fi:FluentIcon.IsVisible>
+              </fi:FluentIcon>
+            </Panel>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
               <TextBlock Classes="stepTitle" Text="{Binding Title}" />
               <TextBlock Classes="stepMeta" Text="{Binding MetaLine}" IsVisible="{Binding HasMeta}" />
@@ -89,7 +96,7 @@
           <StackPanel>
             <graphs:WidthNeutralDecorator Height="40">
               <Grid Margin="12,0,8,0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Panel VerticalAlignment="Center">
                   <CheckBox Classes="runSelect" MinWidth="0" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="选择运行此步骤"
                             ToolTip.Tip="勾选后只运行所选步骤，其余本次跳过" IsChecked="{Binding IsRunSelected, Mode=OneWay}"
                             Command="{Binding $parent[UserControl].((vm:AutomationPageViewModel)DataContext).ToggleRunStepCommand}" CommandParameter="{Binding}">
@@ -102,8 +109,15 @@
                   </CheckBox>
                   <fi:FluentIcon Classes="stateIcon" Icon="{Binding StateIcon}" IconSize="Size16"
                                  Classes.pending="{Binding IsPending}" Classes.running="{Binding IsRunning}" Classes.review="{Binding IsReview}"
-                                 Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}" Classes.cancelled="{Binding IsCancelled}" />
-                </StackPanel>
+                                 Classes.succeeded="{Binding IsSucceeded}" Classes.failed="{Binding IsFailed}" Classes.cancelled="{Binding IsCancelled}">
+                    <fi:FluentIcon.IsVisible>
+                      <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                        <Binding Path="!$parent[UserControl].((vm:AutomationPageViewModel)DataContext).IsSelectingSteps" />
+                        <Binding Path="!CanSelectForRun" />
+                      </MultiBinding>
+                    </fi:FluentIcon.IsVisible>
+                  </fi:FluentIcon>
+                </Panel>
                 <TextBlock Grid.Column="1" Classes="stageTitle" Text="{Binding StageTitle}" ToolTip.Tip="{Binding StageTitle}"
                            Classes.skipped="{Binding IsSkipped}" Classes.cancelled="{Binding IsCancelled}" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -441,6 +455,11 @@
                                   Command="{Binding DeleteSelectedCommand}" IsVisible="{Binding IsSelectedTaskInvalid}"
                                   IsEnabled="{Binding CanDeleteSelected}" ToolTip.Tip="{Binding DeleteTip}">
                 <buttons:IconButton.Icon><fi:FluentIcon Icon="Delete" IconSize="Size16" /></buttons:IconButton.Icon>
+              </buttons:IconButton>
+              <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="{Binding TaskScriptReloadText}"
+                                  Command="{Binding ReloadSelectedScriptCommand}" IsVisible="{Binding ShowTaskScriptReload}"
+                                  ToolTip.Tip="{Binding TaskScriptReloadTip}">
+                <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowClockwise" IconSize="Size16" /></buttons:IconButton.Icon>
               </buttons:IconButton>
               <buttons:IconButton Classes="contentButton buttonPrimary buttonSmall" Text="手动执行"
                                   Command="{Binding RunSelectedCommand}" IsVisible="{Binding ShowManualRun}"
@@ -817,11 +836,6 @@
                                  IsVisible="{Binding !HasEditor}" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                      <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="{Binding TaskScriptReloadText}"
-                                          Command="{Binding ReloadSelectedScriptCommand}" IsVisible="{Binding ShowTaskScriptReload}"
-                                          ToolTip.Tip="{Binding TaskScriptReloadTip}">
-                        <buttons:IconButton.Icon><fi:FluentIcon Icon="ArrowClockwise" IconSize="Size16" /></buttons:IconButton.Icon>
-                      </buttons:IconButton>
                       <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="选择步骤"
                                           Command="{Binding StartStepSelectionCommand}" IsVisible="{Binding ShowSelectSteps}"
                                           ToolTip.Tip="勾选要运行的步骤或整段阶段，只运行这些；其余本次跳过，收尾照常执行">
@@ -832,11 +846,6 @@
                       <buttons:IconButton Classes="contentButton buttonPrimary buttonSmall" Text="{Binding RunSelectedStepsText}"
                                           Command="{Binding RunSelectedStepsCommand}" IsVisible="{Binding IsSelectingSteps}" IsEnabled="{Binding HasStepSelection}"
                                           ToolTip.Tip="用已保存的参数运行一次，只执行勾选的步骤">
-                        <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" IconSize="Size16" /></buttons:IconButton.Icon>
-                      </buttons:IconButton>
-                      <buttons:IconButton Classes="contentButton buttonSecondary buttonSmall" Text="手动执行"
-                                          Command="{Binding RunSelectedCommand}" IsEnabled="{Binding CanRunSelected}" IsVisible="{Binding ShowManualRun}"
-                                          ToolTip.Tip="{Binding RunButtonTip}">
                         <buttons:IconButton.Icon><fi:FluentIcon Icon="Play" IconSize="Size16" /></buttons:IconButton.Icon>
                       </buttons:IconButton>
                     </StackPanel>

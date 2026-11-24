@@ -653,6 +653,12 @@ public sealed partial class RemoteAutomationAgent(AutomationHost automation, Rem
         {
             UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = directory
         };
+        if (request.PullFromPool)
+        {
+            start.Environment["KSF_EVAL_REMOTE_RUN"] = request.Id;
+            start.Environment["KSF_EVAL_CONTROL_URL"] = _server;
+            start.Environment["KSF_EVAL_ATTEMPT_ROOT"] = Path.Combine(directory, "eval-attempt");
+        }
         if (request.DeploymentCatalogPath is { Length: > 0 } catalog)
             start.Environment[AutomationRemoteSource.DeploymentCatalogVariable] = catalog;
         if (request.ResourceCoordinationEnabled && request.TenantId is { Length: > 0 } tenant)

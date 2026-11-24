@@ -488,6 +488,7 @@ public sealed partial class AutomationStepItemViewModel : ObservableObject, Hero
     /// <summary>Plan preview only: a top-level step or a stage member that 「运行所选」 can tick. Finally and recovery always run.</summary>
     [ObservableProperty] private bool _canSelectForRun;
     [ObservableProperty] private bool _isRunSelected;
+    internal AutomationStepItemViewModel? ParentStage { get; set; }
 
     /// <param name="isPlan">任务编排预览：只表达结构，不显示「等待」等运行状态。</param>
     public AutomationStepItemViewModel(AutomationStepRecord record, bool isPlan = false)
@@ -846,7 +847,11 @@ public sealed partial class AutomationEditorViewModel : ObservableObject
                 {
                     step.CanSelectForRun = step is { IsFinally: false, IsRecovery: false };
                     if (step.IsStage)
-                        foreach (var child in step.Children) child.CanSelectForRun = child is { IsFinally: false, IsRecovery: false };
+                        foreach (var child in step.Children)
+                        {
+                            child.CanSelectForRun = child is { IsFinally: false, IsRecovery: false };
+                            child.ParentStage = step;
+                        }
                 }
                 PlanPreviewError = "";
                 return steps;

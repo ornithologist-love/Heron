@@ -139,6 +139,12 @@ public static class AutomationScriptInput
 
         public void Save(AutomationTask task, Action persistTask)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                using var update = AutomationUpdateLock.AcquireFile(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, "." + Path.GetFileName(path) + ".lock"), TimeSpan.FromSeconds(15), "脚本输入文件忙，请稍后重试");
+                SaveLocked(task, persistTask);
+                return;
+            }
             var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(path).ToUpperInvariant())));
             using var mutex = new Mutex(false, AutomationRuntime.InputMutexPrefix + key);
             var acquired = false;
@@ -147,24 +153,29 @@ public static class AutomationScriptInput
                 try { if (!mutex.WaitOne(TimeSpan.FromSeconds(15))) throw new IOException("脚本输入文件忙，请稍后重试"); }
                 catch (AbandonedMutexException) { }
                 acquired = true;
-                var original = AutomationStore.ReadShared(path);
-                var root = JsonNode.Parse(original) as JsonObject ?? throw new JsonException("脚本输入必须是 JSON 对象");
-                var latest = ReadTriggers(root);
-                if (latest == null || task.TriggerSourceVersion != null && latest.Version != task.TriggerSourceVersion)
-                    throw new IOException("脚本触发器已变化，请重新打开任务后再保存");
-                root["triggers"] = Triggers.FromTask(task).ToNode();
-                var updated = root.ToJsonString(Json) + Environment.NewLine;
-                AutomationStore.WriteAtomic(path, updated);
-                try { persistTask(); }
-                catch
-                {
-                    // Restore only our own write; an external editor may have changed the file meanwhile.
-                    if (AutomationStore.ReadShared(path) == updated) AutomationStore.WriteAtomic(path, original);
-                    throw;
-                }
-                _stamp = null;
+                SaveLocked(task, persistTask);
             }
             finally { if (acquired) mutex.ReleaseMutex(); }
+        }
+
+        private void SaveLocked(AutomationTask task, Action persistTask)
+        {
+            var original = AutomationStore.ReadShared(path);
+            var root = JsonNode.Parse(original) as JsonObject ?? throw new JsonException("脚本输入必须是 JSON 对象");
+            var latest = ReadTriggers(root);
+            if (latest == null || task.TriggerSourceVersion != null && latest.Version != task.TriggerSourceVersion)
+                throw new IOException("脚本触发器已变化，请重新打开任务后再保存");
+            root["triggers"] = Triggers.FromTask(task).ToNode();
+            var updated = root.ToJsonString(Json) + Environment.NewLine;
+            AutomationStore.WriteAtomic(path, updated);
+            try { persistTask(); }
+            catch
+            {
+                // Restore only our own write; an external editor may have changed the file meanwhile.
+                if (AutomationStore.ReadShared(path) == updated) AutomationStore.WriteAtomic(path, original);
+                throw;
+            }
+            _stamp = null;
         }
     }
 }
